@@ -26,3 +26,6 @@ tmp*
 
 .gradle
 .idea
+
+out
+build

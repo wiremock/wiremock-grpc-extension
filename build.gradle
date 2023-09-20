@@ -10,8 +10,7 @@ buildscript {
 }
 
 plugins {
-  id 'java'
-  id 'scala'
+  id 'java-library'
   id 'signing'
   id 'maven-publish'
   id 'idea'
@@ -23,6 +22,7 @@ plugins {
 }
 
 repositories {
+  mavenLocal()
   mavenCentral()
 }
 
@@ -33,7 +33,7 @@ targetCompatibility = 11
 
 ext {
   versions = [
-    wiremock: "3.1.0",
+    wiremock: "3.2.0",
     grpc: "1.58.0",
     protobuf: "3.24.0"
   ]
@@ -43,10 +43,12 @@ ext {
 }
 
 dependencies {
-  compileOnly "org.wiremock:wiremock:$versions.wiremock"
-  implementation "io.grpc:grpc-bom:$versions.grpc"
-  implementation "io.grpc:grpc-protobuf:$versions.grpc"
-  implementation "io.grpc:grpc-stub:$versions.grpc"
+  api "org.wiremock:wiremock:$versions.wiremock"
+
+  api "io.grpc:grpc-bom:$versions.grpc"
+  api "io.grpc:grpc-protobuf:$versions.grpc"
+  api "io.grpc:grpc-stub:$versions.grpc"
+
   implementation "io.grpc:grpc-servlet-jakarta:$versions.grpc"
   implementation "com.google.protobuf:protobuf-java-util:$versions.protobuf"
 
@@ -67,7 +69,7 @@ spotless {
     target 'src/**/*.java'
     googleJavaFormat('1.17.0')
     licenseHeaderFile "${rootDir}/gradle/spotless.java.license.txt"
-    ratchetFrom 'origin/master'
+    ratchetFrom 'origin/main'
     trimTrailingWhitespace()
     endWithNewline()
     targetExclude '**/Tmp*.java'
@@ -87,10 +89,10 @@ spotless {
 }
 
 shadowJar {
-  archiveBaseName.set('wiremock-webhooks-extension')
+  archiveBaseName.set('wiremock-grpc-extension')
   archiveClassifier.set('')
 
-  relocate "org.apache", 'wiremock.webhooks.org.apache'
+  relocate "org.apache", 'wiremock.grpc.org.apache'
 
   dependencies {
     exclude(dependency('org.slf4j:slf4j-api'))

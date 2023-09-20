@@ -47,8 +47,10 @@ public class GrpcAcceptanceTest {
   public static WireMockExtension wm =
       WireMockExtension.newInstance()
           .options(
-              wireMockConfig().dynamicPort().withRootDirectory("src/test/resources/wiremock")
-              //                .extensions(new GrpcExtensionFactory())
+              wireMockConfig()
+                      .dynamicPort()
+                      .withRootDirectory("src/test/resources/wiremock")
+                      .extensions(new GrpcExtensionFactory())
               )
           .build();
 
