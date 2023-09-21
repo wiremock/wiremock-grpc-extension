@@ -90,7 +90,7 @@ spotless {
 }
 
 dependencies {
-  compileOnlyApi "org.wiremock:wiremock:$versions.wiremock"
+  api "org.wiremock:wiremock:$versions.wiremock"
 
   api "io.grpc:grpc-bom:$versions.grpc"
   api "io.grpc:grpc-protobuf:$versions.grpc"
