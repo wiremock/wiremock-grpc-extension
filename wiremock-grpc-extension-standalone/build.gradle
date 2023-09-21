@@ -1,0 +1,163 @@
+buildscript {
+  repositories {
+    maven {
+      url "https://oss.sonatype.org"
+    }
+    mavenCentral()
+  }
+}
+
+plugins {
+  id 'java-library'
+  id 'signing'
+  id 'maven-publish'
+  id 'idea'
+  id 'eclipse'
+  id 'project-report'
+  id 'com.diffplug.spotless' version '6.21.0'
+  id 'com.github.johnrengelman.shadow' version '8.1.0'
+  id "com.google.protobuf" version "0.9.4"
+}
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+group 'org.wiremock'
+version = "0.1.0"
+
+dependencies {
+  api project(":")
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  archiveClassifier.set('sources')
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  archiveClassifier.set('javadoc')
+  from javadoc.destinationDir
+}
+
+task testJar(type: Jar, dependsOn: testClasses) {
+  archiveClassifier.set('tests')
+  from sourceSets.test.output
+}
+
+signing {
+  required {
+    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish"))
+  }
+  sign publishing.publications
+}
+
+publishing {
+  repositories {
+    maven {
+      url 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+      credentials {
+        username repoUser
+        password repoPassword
+      }
+    }
+  }
+
+  publications {
+    standalone(MavenPublication) { publication ->
+      artifactId = "${jar.getArchiveBaseName().get()}"
+      project.shadow.component(publication)
+
+      artifact sourcesJar
+      artifact javadocJar
+      artifact testJar
+
+      pom.packaging 'jar'
+      pom.withXml {
+        asNode().appendNode('description', 'Mock gRPC services with WireMock standalone')
+        asNode().children().last() + pomInfo
+      }
+    }
+  }
+}
+
+project.tasks.signStandalonePublication.dependsOn jar
+
+assemble.dependsOn clean, shadowJar
+
+task release {
+  dependsOn clean, assemble, publishAllPublicationsToMavenRepository
+}
+
+task localRelease {
+  dependsOn clean, assemble, publishToMavenLocal
+}
+
+shadowJar {
+  archiveBaseName.set('wiremock-grpc-extension-standalone')
+  archiveClassifier.set('')
+
+  relocate "io.grpc", 'wiremock.grpc.io.grpc'
+  relocate "io.perfmark", 'wiremock.grpc.io.perfmark'
+
+  relocate "org.mortbay", 'wiremock.org.mortbay'
+  relocate "org.eclipse", 'wiremock.org.eclipse'
+  relocate "org.codehaus", 'wiremock.org.codehaus'
+  relocate "com.google", 'wiremock.com.google'
+  relocate "com.google.thirdparty", 'wiremock.com.google.thirdparty'
+  relocate "com.fasterxml.jackson", 'wiremock.com.fasterxml.jackson'
+  relocate "org.apache", 'wiremock.org.apache'
+  relocate "org.xmlunit", 'wiremock.org.xmlunit'
+  relocate "org.hamcrest", 'wiremock.org.hamcrest'
+  relocate "org.skyscreamer", 'wiremock.org.skyscreamer'
+  relocate "org.json", 'wiremock.org.json'
+  relocate "net.minidev", 'wiremock.net.minidev'
+  relocate "com.jayway", 'wiremock.com.jayway'
+  relocate "org.objectweb", 'wiremock.org.objectweb'
+  relocate "org.custommonkey", "wiremock.org.custommonkey"
+  relocate "net.javacrumbs", "wiremock.net.javacrumbs"
+  relocate "net.sf", "wiremock.net.sf"
+  relocate "com.github.jknack", "wiremock.com.github.jknack"
+  relocate "org.antlr", "wiremock.org.antlr"
+  relocate "jakarta.servlet", "wiremock.jakarta.servlet"
+  relocate "org.checkerframework", "wiremock.org.checkerframework"
+  relocate "org.hamcrest", "wiremock.org.hamcrest"
+  relocate "org.slf4j", "wiremock.org.slf4j"
+  relocate "joptsimple", "wiremock.joptsimple"
+  exclude 'joptsimple/HelpFormatterMessages.properties'
+  relocate "org.yaml", "wiremock.org.yaml"
+  relocate "com.ethlo", "wiremock.com.ethlo"
+  relocate "com.networknt", "wiremock.com.networknt"
+
+  dependencies {
+    exclude(dependency('org.slf4j:slf4j-api'))
+  }
+}
+
+protobuf {
+  protoc {
+    artifact = "com.google.protobuf:protoc:3.24.3"
+  }
+
+  plugins {
+    grpc {
+      artifact = "io.grpc:protoc-gen-grpc-java:$versions.grpc"
+    }
+  }
+  generateProtoTasks {
+    all()*.plugins {
+      grpc {
+        outputSubDir = 'java'
+      }
+    }
+
+    all().each { task ->
+      task.generateDescriptorSet = true
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/services.dsc"
+    }
+  }
+}
+
+processTestResources.dependsOn generateProto
+processTestResources.dependsOn generateTestProto

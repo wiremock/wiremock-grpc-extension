@@ -42,6 +42,11 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
   }
 
   @Override
+  public String getName() {
+    return "grpc";
+  }
+
+  @Override
   public HttpServer buildHttpServer(
       Options options,
       AdminRequestHandler adminRequestHandler,

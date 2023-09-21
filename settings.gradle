@@ -1,0 +1,3 @@
+rootProject.name = 'wiremock-grpc-extension'
+
+include 'wiremock-grpc-extension-standalone'
