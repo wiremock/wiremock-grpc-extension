@@ -18,6 +18,10 @@ all of WireMock’s response definition features including Templating can be use
 
 The extension is distributed through Maven Central: `org.wiremock:grpc-extension`
 
+## Examples
+
+See [wiremock/wiremock-grpc-demos](https://github.com/wiremock/wiremock-grpc-demos/)
+
 ## Read More
 
 See [the documentation](https://wiremock.org/docs/grpc/) for more information.
