@@ -41,7 +41,7 @@ allprojects {
     repoPassword = this.hasProperty('sonatypePassword') ? sonatypePassword : 'default'
 
     pomInfo = {
-      name 'WireMock gRPC Extension'
+      name 'WireMock Extension for gRPC'
       url 'https://wiremock.org'
       scm {
         connection 'https://github.com/wiremock/wiremock-grpc-extension.git'
