@@ -21,6 +21,8 @@ package com.example.grpc;
 
 option java_multiple_files = true;
 
+import "google/protobuf/empty.proto";
+
 enum Sentiment {
     HAPPY = 0;
     SLEEPY = 1;
@@ -44,4 +46,5 @@ service GreetingService {
     rpc greeting(HelloRequest) returns (HelloResponse);
     rpc manyGreetingsOneReply(stream HelloRequest) returns (HelloResponse);
     rpc oneGreetingManyReplies(HelloRequest) returns (stream HelloResponse);
+    rpc oneGreetingEmptyReply(HelloRequest) returns (google.protobuf.Empty);
 }

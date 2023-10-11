@@ -160,6 +160,13 @@ publishing {
   }
 }
 
+test {
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    exceptionFormat "full"
+  }
+}
+
 project.tasks.signMainPublication.dependsOn jar
 
 assemble.dependsOn clean, jar
@@ -192,6 +199,7 @@ protobuf {
     all().each { task ->
       task.generateDescriptorSet = true
       task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/services.dsc"
+      task.descriptorSetOptions.includeImports = true
     }
   }
 }

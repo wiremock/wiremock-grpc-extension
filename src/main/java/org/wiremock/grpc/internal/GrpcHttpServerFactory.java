@@ -76,7 +76,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
                         Exceptions.uncheck(
                             () ->
                                 Descriptors.FileDescriptor.buildFrom(
-                                    fileDescriptorProto, new Descriptors.FileDescriptor[0]),
+                                    fileDescriptorProto, new Descriptors.FileDescriptor[0], true),
                             Descriptors.FileDescriptor.class))
                 .collect(Collectors.toUnmodifiableList());
 
