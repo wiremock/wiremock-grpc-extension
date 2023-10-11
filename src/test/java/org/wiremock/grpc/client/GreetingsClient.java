@@ -19,6 +19,7 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
 import com.github.tomakehurst.wiremock.common.Exceptions;
+import com.google.protobuf.Empty;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
@@ -105,5 +106,11 @@ public class GreetingsClient {
     Exceptions.uncheck(() -> future.get(3, TimeUnit.SECONDS));
 
     return responseHolder.get().getGreeting();
+  }
+
+  public boolean oneGreetingEmptyReply(String name) {
+    final Empty response =
+        stub.oneGreetingEmptyReply(HelloRequest.newBuilder().setName(name).build());
+    return response != null;
   }
 }

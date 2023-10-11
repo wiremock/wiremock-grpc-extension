@@ -27,6 +27,7 @@ import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -48,10 +49,9 @@ public class GrpcAcceptanceTest {
       WireMockExtension.newInstance()
           .options(
               wireMockConfig()
-                      .dynamicPort()
-                      .withRootDirectory("src/test/resources/wiremock")
-                      .extensions(new GrpcExtensionFactory())
-              )
+                  .dynamicPort()
+                  .withRootDirectory("src/test/resources/wiremock")
+                  .extensions(new GrpcExtensionFactory()))
           .build();
 
   @BeforeEach
@@ -89,10 +89,7 @@ public class GrpcAcceptanceTest {
     mockGreetingService.stubFor(
         method("greeting")
             .willReturn(
-                jsonTemplate(
-                    "{\n"
-                        + "    \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\"\n"
-                        + "}")));
+                jsonTemplate("{ \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\" }")));
 
     String greeting = greetingsClient.greet("Tom");
 
@@ -102,8 +99,7 @@ public class GrpcAcceptanceTest {
   @Test
   void returnsResponseBuiltFromJson() {
     mockGreetingService.stubFor(
-        method("greeting")
-            .willReturn(json("{\n" + "    \"greeting\": \"Hi Tom from JSON\"\n" + "}")));
+        method("greeting").willReturn(json("{ \"greeting\": \"Hi Tom from JSON\" }")));
 
     String greeting = greetingsClient.greet("Whatever");
 
@@ -206,5 +202,13 @@ public class GrpcAcceptanceTest {
             .willReturn(message(HelloResponse.newBuilder().setGreeting("Hi Tom"))));
 
     assertThat(greetingsClient.oneGreetingManyReplies("Tom"), hasItem("Hi Tom"));
+  }
+
+  @Test
+  void returnsResponseWithImportedType() {
+    mockGreetingService.stubFor(
+        method("oneGreetingEmptyReply").willReturn(message(Empty.newBuilder())));
+
+    assertThat(greetingsClient.oneGreetingEmptyReply("Tom"), is(true));
   }
 }
