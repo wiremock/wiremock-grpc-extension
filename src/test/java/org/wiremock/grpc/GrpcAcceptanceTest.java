@@ -26,7 +26,9 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -90,9 +92,7 @@ public class GrpcAcceptanceTest {
         method("greeting")
             .willReturn(
                 jsonTemplate(
-                    "{\n"
-                        + "    \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\"\n"
-                        + "}")));
+                    "{ \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\" }")));
 
     String greeting = greetingsClient.greet("Tom");
 
@@ -103,7 +103,7 @@ public class GrpcAcceptanceTest {
   void returnsResponseBuiltFromJson() {
     mockGreetingService.stubFor(
         method("greeting")
-            .willReturn(json("{\n" + "    \"greeting\": \"Hi Tom from JSON\"\n" + "}")));
+            .willReturn(json("{ \"greeting\": \"Hi Tom from JSON\" }")));
 
     String greeting = greetingsClient.greet("Whatever");
 
