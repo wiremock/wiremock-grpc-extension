@@ -211,4 +211,37 @@ public class GrpcAcceptanceTest {
 
     assertThat(greetingsClient.oneGreetingEmptyReply("Tom"), is(true));
   }
+
+  @Test
+  void verifiesViaJson() {
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    greetingsClient.greet("Peter");
+    greetingsClient.greet("Peter");
+
+    mockGreetingService
+        .verify(moreThanOrExactly(2), "greeting")
+        .withRequestMessage(equalToJson("{ \"name\":  \"Peter\" }"));
+
+    mockGreetingService.verify(0, "oneGreetingEmptyReply");
+
+    mockGreetingService
+        .verify(0, "greeting")
+        .withRequestMessage(equalToJson("{ \"name\":  \"Chris\" }"));
+  }
+
+  @Test
+  void verifiesViaMessage() {
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    greetingsClient.greet("Peter");
+
+    mockGreetingService
+        .verify("greeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Peter")));
+
+    mockGreetingService.verify(0, "oneGreetingEmptyReply");
+  }
 }

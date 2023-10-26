@@ -15,6 +15,10 @@
  */
 package org.wiremock.grpc.dsl;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
+
+import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.wiremock.annotations.Beta;
@@ -34,5 +38,17 @@ public class WireMockGrpcService {
     final StubMapping stubMapping = builder.build(serviceName);
     wireMock.register(stubMapping);
     return stubMapping;
+  }
+
+  public GrpcVerification verify(String method) {
+    return new GrpcVerification(wireMock, moreThanOrExactly(1), serviceName, method);
+  }
+
+  public GrpcVerification verify(int count, String method) {
+    return new GrpcVerification(wireMock, exactly(count), serviceName, method);
+  }
+
+  public GrpcVerification verify(CountMatchingStrategy countMatch, String method) {
+    return new GrpcVerification(wireMock, countMatch, serviceName, method);
   }
 }
