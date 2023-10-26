@@ -16,6 +16,7 @@
 package org.wiremock.grpc.dsl;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
+import com.github.tomakehurst.wiremock.http.Fault;
 import org.wiremock.annotations.Beta;
 
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
@@ -25,7 +26,11 @@ public class GrpcResponseDefinitionBuilder {
   public static final String GRPC_STATUS_REASON = "grpc-status-reason";
   private final WireMockGrpc.Status grpcStatus;
   private final String statusReason;
+
+  private final Fault fault;
+
   private String json;
+
   private boolean templatingEnabled;
 
   public GrpcResponseDefinitionBuilder(WireMockGrpc.Status grpcStatus) {
@@ -35,6 +40,13 @@ public class GrpcResponseDefinitionBuilder {
   public GrpcResponseDefinitionBuilder(WireMockGrpc.Status grpcStatus, String statusReason) {
     this.grpcStatus = grpcStatus;
     this.statusReason = statusReason;
+    this.fault = null;
+  }
+
+  public GrpcResponseDefinitionBuilder(Fault fault) {
+    this.fault = fault;
+    this.grpcStatus = null;
+    this.statusReason = null;
   }
 
   public GrpcResponseDefinitionBuilder fromJson(String json) {
@@ -48,6 +60,10 @@ public class GrpcResponseDefinitionBuilder {
   }
 
   public ResponseDefinitionBuilder build() {
+    if (fault != null) {
+      return ResponseDefinitionBuilder.responseDefinition().withFault(fault);
+    }
+
     final ResponseDefinitionBuilder responseDefinitionBuilder =
         ResponseDefinitionBuilder.responseDefinition()
             .withHeader(GRPC_STATUS_NAME, grpcStatus.name());
