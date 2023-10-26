@@ -17,6 +17,7 @@ package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,17 +28,21 @@ import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.http.FixedDelayDistribution;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import org.apache.commons.lang3.time.StopWatch;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
+
+import java.util.concurrent.TimeUnit;
 
 public class GrpcAcceptanceTest {
 
@@ -253,5 +258,22 @@ public class GrpcAcceptanceTest {
     Exception exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Alan"));
     assertThat(exception.getMessage(), is("UNKNOWN"));
+  }
+
+  @Test
+  void delays() {
+    final long DELAY = 250L;
+
+    mockGreetingService.stubFor(
+            method("greeting")
+                    .willReturn(message(HelloResponse.newBuilder().setGreeting("Delayed Hi"))
+                            .withDelay(new FixedDelayDistribution(DELAY))));
+
+    StopWatch stopWatch = StopWatch.createStarted();
+    String greeting = greetingsClient.greet("Whatever");
+    stopWatch.stop();
+
+    assertThat(greeting, is("Delayed Hi"));
+    assertThat(stopWatch.getTime(MILLISECONDS), greaterThanOrEqualTo(DELAY));
   }
 }
