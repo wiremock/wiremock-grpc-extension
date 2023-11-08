@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.example.grpc.request;
+
+option java_multiple_files = true;
+import "request/models/sentiment.proto";
+
+message HelloRequest {
+    string name = 1;
+    int32 age = 2;
+    repeated string hobbies = 3;
+    map<string, string> bagOfTricks = 4;
+    com.example.grpc.request.models.Sentiment sentiment = 5;
+}
+

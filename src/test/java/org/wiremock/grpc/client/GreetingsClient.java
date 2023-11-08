@@ -16,8 +16,8 @@
 package org.wiremock.grpc.client;
 
 import com.example.grpc.GreetingServiceGrpc;
-import com.example.grpc.HelloRequest;
-import com.example.grpc.HelloResponse;
+import com.example.grpc.request.HelloRequest;
+import com.example.grpc.response.HelloResponse;
 import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.google.protobuf.Empty;
 import io.grpc.Channel;
@@ -41,8 +41,7 @@ public class GreetingsClient {
   }
 
   public String greet(String name) {
-    return stub.greeting(com.example.grpc.HelloRequest.newBuilder().setName(name).build())
-        .getGreeting();
+    return stub.greeting(HelloRequest.newBuilder().setName(name).build()).getGreeting();
   }
 
   public List<String> oneGreetingManyReplies(String name) {
