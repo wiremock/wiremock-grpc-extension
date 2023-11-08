@@ -14,7 +14,7 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '6.21.0'
+  id 'com.diffplug.spotless' version '6.22.0'
   id "com.google.protobuf" version "0.9.4"
 }
 
