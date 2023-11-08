@@ -26,6 +26,7 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
@@ -210,5 +211,47 @@ public class GrpcAcceptanceTest {
         method("oneGreetingEmptyReply").willReturn(message(Empty.newBuilder())));
 
     assertThat(greetingsClient.oneGreetingEmptyReply("Tom"), is(true));
+  }
+
+  @Test
+  void verifiesViaJson() {
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    greetingsClient.greet("Peter");
+    greetingsClient.greet("Peter");
+
+    mockGreetingService
+        .verify(moreThanOrExactly(2), "greeting")
+        .withRequestMessage(equalToJson("{ \"name\":  \"Peter\" }"));
+
+    mockGreetingService.verify(0, "oneGreetingEmptyReply");
+
+    mockGreetingService
+        .verify(0, "greeting")
+        .withRequestMessage(equalToJson("{ \"name\":  \"Chris\" }"));
+  }
+
+  @Test
+  void verifiesViaMessage() {
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    greetingsClient.greet("Peter");
+
+    mockGreetingService
+        .verify("greeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Peter")));
+
+    mockGreetingService.verify(0, "oneGreetingEmptyReply");
+  }
+
+  @Test
+  void networkFault() {
+    mockGreetingService.stubFor(method("greeting").willReturn(Fault.CONNECTION_RESET_BY_PEER));
+
+    Exception exception =
+        assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Alan"));
+    assertThat(exception.getMessage(), is("UNKNOWN"));
   }
 }

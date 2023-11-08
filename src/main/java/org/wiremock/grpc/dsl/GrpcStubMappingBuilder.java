@@ -15,8 +15,11 @@
  */
 package org.wiremock.grpc.dsl;
 
+import static org.wiremock.grpc.internal.UrlUtils.grpcUrlPath;
+
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.util.ArrayList;
@@ -50,9 +53,13 @@ public class GrpcStubMappingBuilder {
     return this;
   }
 
+  public GrpcStubMappingBuilder willReturn(Fault fault) {
+    this.responseBuilder = new GrpcResponseDefinitionBuilder(fault);
+    return this;
+  }
+
   public StubMapping build(String serviceName) {
-    final String path = "/" + serviceName + "/" + method;
-    final MappingBuilder mappingBuilder = WireMock.post(WireMock.urlPathEqualTo(path));
+    final MappingBuilder mappingBuilder = WireMock.post(grpcUrlPath(serviceName, method));
     requestMessageJsonPatterns.forEach(mappingBuilder::withRequestBody);
     return mappingBuilder.willReturn(responseBuilder.build()).build();
   }

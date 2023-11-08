@@ -24,9 +24,10 @@ repositories {
 }
 
 group 'org.wiremock'
-version = "0.1.0"
 
 allprojects {
+  version = "0.2.0"
+
   sourceCompatibility = 11
   targetCompatibility = 11
 
@@ -171,8 +172,15 @@ project.tasks.signMainPublication.dependsOn jar
 
 assemble.dependsOn clean, jar
 
+task addGitTag {
+  doLast {
+    println "git tag ${version}".execute().text
+    println "git push origin --tags".execute().text
+  }
+}
+
 task release {
-  dependsOn clean, assemble, publishAllPublicationsToMavenRepository
+  dependsOn clean, assemble, publishAllPublicationsToMavenRepository, addGitTag
 }
 
 task localRelease {
