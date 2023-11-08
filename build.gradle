@@ -35,7 +35,7 @@ allprojects {
     versions = [
       wiremock: "3.2.0",
       grpc    : "1.59.0",
-      protobuf: "3.24.0"
+      protobuf: "3.25.0"
     ]
 
     repoUser = this.hasProperty('sonatypeUser') ? sonatypeUser : 'default'
