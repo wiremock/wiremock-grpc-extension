@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package com.example.grpc.request.models;
+
+option java_multiple_files = true;
+
+enum Sentiment {
+  HAPPY = 0;
+  SLEEPY = 1;
+  ANGRY = 2;
+}

@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.wiremock.grpc.dsl.WireMockGrpc.*;
 
 import com.example.grpc.GreetingServiceGrpc;
-import com.example.grpc.HelloRequest;
-import com.example.grpc.HelloResponse;
+import com.example.grpc.request.HelloRequest;
+import com.example.grpc.response.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
