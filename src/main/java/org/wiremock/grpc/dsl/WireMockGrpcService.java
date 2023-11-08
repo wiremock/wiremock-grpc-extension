@@ -15,9 +15,12 @@
  */
 package org.wiremock.grpc.dsl;
 
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.wiremock.annotations.Beta;
+
+import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
 public class WireMockGrpcService {
@@ -34,5 +37,31 @@ public class WireMockGrpcService {
     final StubMapping stubMapping = builder.build(serviceName);
     wireMock.register(stubMapping);
     return stubMapping;
+  }
+
+  public void resetAll() {
+    this.wireMock.resetToDefaultMappings();
+  }
+
+  public void verifyThat(GrpcStubMappingBuilder builder) {
+    final RequestPatternBuilder requestPatternBuilder =
+        builder.buildRequestMatcher(this.serviceName);
+    this.wireMock.verifyThat(requestPatternBuilder);
+  }
+
+  public void verifyThat(CountMatchingStrategy expectedCount, GrpcStubMappingBuilder builder) {
+    final RequestPatternBuilder requestPatternBuilder =
+        builder.buildRequestMatcher(this.serviceName);
+    this.wireMock.verifyThat(expectedCount, requestPatternBuilder);
+  }
+
+  public void verifyThat(int expectedCount, GrpcStubMappingBuilder builder) {
+    final RequestPatternBuilder requestPatternBuilder =
+        builder.buildRequestMatcher(this.serviceName);
+    this.wireMock.verifyThat(expectedCount, requestPatternBuilder);
+  }
+
+  public void verifyNeverCalled(GrpcStubMappingBuilder builder) {
+    verifyThat(0, builder);
   }
 }

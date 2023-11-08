@@ -22,6 +22,13 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.wiremock.grpc.dsl.WireMockGrpc.*;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.wiremock.grpc.client.GreetingsClient;
+import org.wiremock.grpc.dsl.WireMockGrpcService;
+
 import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.HelloRequest;
 import com.example.grpc.HelloResponse;
@@ -31,12 +38,6 @@ import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.wiremock.grpc.client.GreetingsClient;
-import org.wiremock.grpc.dsl.WireMockGrpcService;
 
 public class GrpcAcceptanceTest {
 
@@ -82,6 +83,10 @@ public class GrpcAcceptanceTest {
     String greeting = greetingsClient.greet("Tom");
 
     assertThat(greeting, is("Hello Tom"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
   }
 
   @Test
@@ -94,6 +99,10 @@ public class GrpcAcceptanceTest {
     String greeting = greetingsClient.greet("Tom");
 
     assertThat(greeting, is("Hello Tom"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
   }
 
   @Test
@@ -104,6 +113,10 @@ public class GrpcAcceptanceTest {
     String greeting = greetingsClient.greet("Whatever");
 
     assertThat(greeting, is("Hi Tom from JSON"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Whatever"))));
   }
 
   @Test
@@ -115,6 +128,10 @@ public class GrpcAcceptanceTest {
     String greeting = greetingsClient.greet("Whatever");
 
     assertThat(greeting, is("Hi Tom from object"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Whatever"))));
   }
 
   @Test
@@ -127,6 +144,13 @@ public class GrpcAcceptanceTest {
     assertThat(greetingsClient.greet("Tom"), is("OK"));
 
     assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Wrong"));
+
+    mockGreetingService.verifyThat(
+        method("greeting").withRequestMessage(equalToJson("{ \"name\": \"Tom\" }")));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Wrong"))));
   }
 
   @Test
@@ -142,6 +166,14 @@ public class GrpcAcceptanceTest {
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Wrong"));
     assertThat(
         exception.getMessage(), is("NOT_FOUND: No matching stub mapping found for gRPC request"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Wrong"))));
   }
 
   @Test
@@ -152,6 +184,10 @@ public class GrpcAcceptanceTest {
     StatusRuntimeException exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Whatever"));
     assertThat(exception.getMessage(), is("FAILED_PRECONDITION: Failed some blah prerequisite"));
+
+    mockGreetingService.verifyThat(
+        method("greeting")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Whatever"))));
   }
 
   @Test
@@ -162,6 +198,22 @@ public class GrpcAcceptanceTest {
             .willReturn(message(HelloResponse.newBuilder().setGreeting("Hi Rob"))));
 
     assertThat(greetingsClient.manyGreetingsOneReply("Tom", "Uri", "Rob", "Mark"), is("Hi Rob"));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom").build())));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Uri").build())));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Rob").build())));
+
+    mockGreetingService.verifyNeverCalled(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Mark").build())));
   }
 
   @Test
@@ -179,6 +231,22 @@ public class GrpcAcceptanceTest {
     assertThat(
         exception.getCause().getMessage(),
         is("NOT_FOUND: No matching stub mapping found for gRPC request"));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom").build())));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Uri").build())));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Rob").build())));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Mark").build())));
   }
 
   @Test
@@ -193,6 +261,18 @@ public class GrpcAcceptanceTest {
             Exception.class, () -> greetingsClient.manyGreetingsOneReply("Tom", "Jerf", "Rob"));
     assertThat(exception.getCause(), instanceOf(StatusRuntimeException.class));
     assertThat(exception.getCause().getMessage(), is("INVALID_ARGUMENT: Jerf is not a valid name"));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Jerf"))));
+
+    mockGreetingService.verifyThat(
+        method("manyGreetingsOneReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Rob"))));
   }
 
   @Test
@@ -202,6 +282,10 @@ public class GrpcAcceptanceTest {
             .willReturn(message(HelloResponse.newBuilder().setGreeting("Hi Tom"))));
 
     assertThat(greetingsClient.oneGreetingManyReplies("Tom"), hasItem("Hi Tom"));
+
+    mockGreetingService.verifyThat(
+        method("oneGreetingManyReplies")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
   }
 
   @Test
@@ -210,5 +294,9 @@ public class GrpcAcceptanceTest {
         method("oneGreetingEmptyReply").willReturn(message(Empty.newBuilder())));
 
     assertThat(greetingsClient.oneGreetingEmptyReply("Tom"), is(true));
+
+    mockGreetingService.verifyThat(
+        method("oneGreetingEmptyReply")
+            .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom"))));
   }
 }
