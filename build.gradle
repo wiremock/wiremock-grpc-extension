@@ -179,6 +179,9 @@ test {
 
 assemble.dependsOn clean, jar
 
+publishMainPublicationToMavenLocal.dependsOn jar
+publishMainPublicationToGitHubPackagesRepository.dependsOn jar
+
 task addGitTag {
   doLast {
     println "git tag ${version}".execute().text

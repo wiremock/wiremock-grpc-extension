@@ -94,7 +94,9 @@ publishing {
 assemble.dependsOn clean, shadowJar
 
 publishStandalonePublicationToMavenLocal.dependsOn jar
-publish.dependsOn jar
+publishStandalonePublicationToGitHubPackagesRepository.dependsOn jar
+publishStandalonePublicationToSonatypeRepository.dependsOn jar
+
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
