@@ -94,7 +94,7 @@ signing {
 
 assemble.dependsOn clean, shadowJar
 
-signStandalonePublication.dependsOn jar
+signStandalonePublication.dependsOn shadowJar
 publishStandalonePublicationToMavenLocal.dependsOn signStandalonePublication
 publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandalonePublication
 publishStandalonePublicationToSonatypeRepository.dependsOn signStandalonePublication
@@ -103,6 +103,8 @@ publishStandalonePublicationToSonatypeRepository.dependsOn signStandalonePublica
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
+
+tasks.findAll { it.name == 'jar' }.each { it.enabled = false }
 
 shadowJar {
   archiveBaseName.set('wiremock-grpc-extension-standalone')
