@@ -215,3 +215,17 @@ protobuf {
 
 processTestResources.dependsOn generateProto
 processTestResources.dependsOn generateTestProto
+
+nexusPublishing {
+  // See https://github.com/wiremock/community/blob/main/infra/maven-central.md
+  repositories {
+    sonatype {
+      def envUsername = providers.environmentVariable("OSSRH_USERNAME").orElse("").get()
+      def envPassword = providers.environmentVariable("OSSRH_TOKEN").orElse("").get()
+      if (!envUsername.isEmpty() && !envPassword.isEmpty()) {
+        username.set(envUsername)
+        password.set(envPassword)
+      }
+    }
+  }
+}
