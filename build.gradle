@@ -137,8 +137,9 @@ signing {
   def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
   if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
     useInMemoryPgpKeys(signingKey, signingPassphrase)
-    sign(publishing.publications)
   }
+
+  sign(publishing.publications)
 }
 
 publishing {

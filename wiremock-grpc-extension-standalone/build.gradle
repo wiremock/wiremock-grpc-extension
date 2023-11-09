@@ -54,9 +54,12 @@ signing {
   def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
   if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
     useInMemoryPgpKeys(signingKey, signingPassphrase)
-    sign(publishing.publications)
   }
+
+  sign(publishing.publications)
 }
+
+jar.dependsOn 'signStandalonePublication'
 
 publishing {
   repositories {
@@ -73,8 +76,8 @@ publishing {
   publications {
     standalone(MavenPublication) { publication ->
       artifactId = "${jar.getArchiveBaseName().get()}"
-      project.shadow.component(publication)
 
+      artifact shadowJar
       artifact sourcesJar
       artifact javadocJar
       artifact testJar
@@ -90,13 +93,16 @@ publishing {
 
 assemble.dependsOn clean, shadowJar
 
+publishStandalonePublicationToMavenLocal.dependsOn jar
+publish.dependsOn jar
+
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
 
 shadowJar {
   archiveBaseName.set('wiremock-grpc-extension-standalone')
-  archiveClassifier.set('')
+  archiveClassifier = null
 
   relocate "io.grpc", 'wiremock.grpc.io.grpc'
   relocate "io.perfmark", 'wiremock.grpc.io.perfmark'
