@@ -129,19 +129,26 @@ task testJar(type: Jar, dependsOn: testClasses) {
 }
 
 signing {
+  // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
   required {
     !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish"))
   }
-  sign publishing.publications
+  def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
+  def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
+  if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
+    useInMemoryPgpKeys(signingKey, signingPassphrase)
+    sign(publishing.publications)
+  }
 }
 
 publishing {
   repositories {
     maven {
-      url 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+      name = "GitHubPackages"
+      url = "https://maven.pkg.github.com/wiremock/wiremock-state-extension"
       credentials {
-        username repoUser
-        password repoPassword
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
       }
     }
   }
