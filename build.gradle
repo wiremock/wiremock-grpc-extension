@@ -131,7 +131,7 @@ task testJar(type: Jar, dependsOn: testClasses) {
 signing {
   // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
   required {
-    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish"))
+    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal"))
   }
   def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
   def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
@@ -176,8 +176,6 @@ test {
   }
 }
 
-project.tasks.signMainPublication.dependsOn jar
-
 assemble.dependsOn clean, jar
 
 task addGitTag {
@@ -185,10 +183,6 @@ task addGitTag {
     println "git tag ${version}".execute().text
     println "git push origin --tags".execute().text
   }
-}
-
-task release {
-  dependsOn clean, assemble, publishAllPublicationsToMavenRepository, addGitTag
 }
 
 task localRelease {
