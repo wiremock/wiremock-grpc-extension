@@ -24,7 +24,7 @@ jobs:
         id: publish_package
         uses: gradle/gradle-build-action@v2.9.0
         with:
-          arguments: release closeAndReleaseStagingRepository
+          arguments: publish closeAndReleaseStagingRepository
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
