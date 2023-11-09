@@ -136,7 +136,10 @@ signing {
   def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
   def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
   if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
+    println "Using PGP key from env vars"
     useInMemoryPgpKeys(signingKey, signingPassphrase)
+  } else {
+    println "Using default PGP key"
   }
 
   sign(publishing.publications)

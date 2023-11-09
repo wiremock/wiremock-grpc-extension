@@ -45,22 +45,6 @@ task testJar(type: Jar, dependsOn: testClasses) {
   from sourceSets.test.output
 }
 
-signing {
-  // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
-  required {
-    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal"))
-  }
-  def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
-  def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
-  if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
-    useInMemoryPgpKeys(signingKey, signingPassphrase)
-  }
-
-  sign(publishing.publications)
-}
-
-jar.dependsOn 'signStandalonePublication'
-
 publishing {
   repositories {
     maven {
@@ -91,11 +75,29 @@ publishing {
   }
 }
 
+signing {
+  // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
+  required {
+    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal"))
+  }
+  def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
+  def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
+  if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
+    println "Using PGP key from env vars"
+    useInMemoryPgpKeys(signingKey, signingPassphrase)
+  } else {
+    println "Using default PGP key"
+  }
+
+  sign publishing.publications
+}
+
 assemble.dependsOn clean, shadowJar
 
-publishStandalonePublicationToMavenLocal.dependsOn jar
-publishStandalonePublicationToGitHubPackagesRepository.dependsOn jar
-publishStandalonePublicationToSonatypeRepository.dependsOn jar
+signStandalonePublication.dependsOn jar
+publishStandalonePublicationToMavenLocal.dependsOn signStandalonePublication
+publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandalonePublication
+publishStandalonePublicationToSonatypeRepository.dependsOn signStandalonePublication
 
 
 task localRelease {
