@@ -23,6 +23,7 @@ option java_multiple_files = true;
 import "request/helloRequest.proto";
 import "response/helloResponse.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
 
 // 4. service, unary request/response
 service GreetingService {
@@ -30,4 +31,6 @@ service GreetingService {
     rpc manyGreetingsOneReply(stream com.example.grpc.request.HelloRequest) returns (com.example.grpc.response.HelloResponse);
     rpc oneGreetingManyReplies(com.example.grpc.request.HelloRequest) returns (stream com.example.grpc.response.HelloResponse);
     rpc oneGreetingEmptyReply(com.example.grpc.request.HelloRequest) returns (google.protobuf.Empty);
+    rpc greetingAnyRequest(google.protobuf.Any) returns ( com.example.grpc.response.HelloResponse) ;
+    rpc greetingAnyResponse(com.example.grpc.request.HelloRequest) returns (google.protobuf.Any) ;
 }

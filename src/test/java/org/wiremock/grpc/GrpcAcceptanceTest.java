@@ -286,4 +286,39 @@ public class GrpcAcceptanceTest {
     assertThat(greeting, is("Delayed hello"));
     assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(500L));
   }
+
+  @Test
+  void unaryMethodWithAnyRequest() {
+    mockGreetingService.stubFor(
+        method("greetingAnyRequest")
+            .willReturn(message(HelloResponse.newBuilder().setGreeting("Hiya").build())));
+
+    String greeting = greetingsClient.greetAnyRequest();
+
+    assertThat(greeting, is("Hiya"));
+  }
+
+  @Test
+  void unaryMethodWithAnyResponse() {
+    mockGreetingService.stubFor(
+        method("greetingAnyResponse")
+            .willReturn(messageAsAny(HelloResponse.newBuilder().setGreeting("Hiya").build())));
+
+    String typeUrl = greetingsClient.greetAnyResponse();
+
+    assertThat(typeUrl, is("https://com.example.grpc.response.HelloResponse"));
+  }
+
+  @Test
+  void unaryMethodWithAnyResponseFromJson() {
+    mockGreetingService.stubFor(
+        method("greetingAnyResponse")
+            .willReturn(
+                json(
+                    "{ \"@type\": \"https://com.example.grpc.response.HelloResponse\", \"greeting\": \"Hiya\" }")));
+
+    String typeUrl = greetingsClient.greetAnyResponse();
+
+    assertThat(typeUrl, is("https://com.example.grpc.response.HelloResponse"));
+  }
 }

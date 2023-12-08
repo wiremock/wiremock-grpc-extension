@@ -15,7 +15,9 @@
  */
 package org.wiremock.grpc.dsl;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.google.protobuf.MessageOrBuilder;
 import org.wiremock.annotations.Beta;
@@ -46,6 +48,14 @@ public class WireMockGrpc {
   public static GrpcResponseDefinitionBuilder message(MessageOrBuilder messageOrBuilder) {
     final String json = JsonMessageUtils.toJson(messageOrBuilder);
     return new GrpcResponseDefinitionBuilder(Status.OK).fromJson(json);
+  }
+
+  public static GrpcResponseDefinitionBuilder messageAsAny(MessageOrBuilder messageOrBuilder) {
+    final String initialJson = JsonMessageUtils.toJson(messageOrBuilder);
+    final ObjectNode jsonObject = Json.read(initialJson, ObjectNode.class);
+    jsonObject.put("@type", "https://" + messageOrBuilder.getDescriptorForType().getFullName());
+    String finalJson = Json.write(jsonObject);
+    return new GrpcResponseDefinitionBuilder(Status.OK).fromJson(finalJson);
   }
 
   public enum Status {
