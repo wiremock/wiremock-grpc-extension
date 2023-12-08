@@ -17,6 +17,7 @@ package org.wiremock.grpc.internal;
 
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_NAME;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_REASON;
+import static org.wiremock.grpc.internal.Delays.delayIfRequired;
 
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
@@ -61,6 +62,8 @@ public class UnaryServerCallHandler
         wireMockRequest,
         (req, resp, attributes) -> {
           final HttpHeader statusHeader = resp.getHeaders().getHeader(GRPC_STATUS_NAME);
+
+          delayIfRequired(resp);
 
           if (!statusHeader.isPresent() && resp.getStatus() == 404) {
             responseObserver.onError(

@@ -19,7 +19,10 @@ import static org.wiremock.grpc.internal.UrlUtils.grpcUrlPath;
 
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.DelayDistribution;
 import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.http.LogNormal;
+import com.github.tomakehurst.wiremock.http.UniformDistribution;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.util.ArrayList;
@@ -56,6 +59,25 @@ public class GrpcStubMappingBuilder {
   public GrpcStubMappingBuilder willReturn(Fault fault) {
     this.responseBuilder = new GrpcResponseDefinitionBuilder(fault);
     return this;
+  }
+
+  public GrpcStubMappingBuilder withFixedDelay(long milliseconds) {
+    responseBuilder.withFixedDelay(milliseconds);
+    return this;
+  }
+
+  public GrpcStubMappingBuilder withDelay(DelayDistribution delay) {
+    responseBuilder.withRandomDelay(delay);
+    return this;
+  }
+
+  public GrpcStubMappingBuilder withLogNormalRandomDelay(double medianMilliseconds, double sigma) {
+    return withDelay(new LogNormal(medianMilliseconds, sigma));
+  }
+
+  public GrpcStubMappingBuilder withUniformRandomDelay(
+      int lowerMilliseconds, int upperMilliseconds) {
+    return withDelay(new UniformDistribution(lowerMilliseconds, upperMilliseconds));
   }
 
   public StubMapping build(String serviceName) {

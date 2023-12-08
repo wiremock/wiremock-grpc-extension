@@ -17,6 +17,7 @@ package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +29,7 @@ import com.example.grpc.response.HelloResponse;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.google.common.base.Stopwatch;
 import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -253,5 +255,35 @@ public class GrpcAcceptanceTest {
     Exception exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Alan"));
     assertThat(exception.getMessage(), is("UNKNOWN"));
+  }
+
+  @Test
+  void fixedDelay() {
+    mockGreetingService.stubFor(
+        method("greeting")
+            .willReturn(json("{ \"greeting\": \"Delayed hello\" }"))
+            .withFixedDelay(1000));
+
+    Stopwatch stopwatch = Stopwatch.createStarted();
+    String greeting = greetingsClient.greet("Tom");
+    stopwatch.stop();
+
+    assertThat(greeting, is("Delayed hello"));
+    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(1000L));
+  }
+
+  @Test
+  void randomDelay() {
+    mockGreetingService.stubFor(
+        method("greeting")
+            .willReturn(json("{ \"greeting\": \"Delayed hello\" }"))
+            .withUniformRandomDelay(500, 1000));
+
+    Stopwatch stopwatch = Stopwatch.createStarted();
+    String greeting = greetingsClient.greet("Tom");
+    stopwatch.stop();
+
+    assertThat(greeting, is("Delayed hello"));
+    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(500L));
   }
 }
