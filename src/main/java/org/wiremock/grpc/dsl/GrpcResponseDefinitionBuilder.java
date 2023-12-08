@@ -16,7 +16,7 @@
 package org.wiremock.grpc.dsl;
 
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
-import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.http.*;
 import org.wiremock.annotations.Beta;
 
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
@@ -32,6 +32,8 @@ public class GrpcResponseDefinitionBuilder {
   private String json;
 
   private boolean templatingEnabled;
+
+  private DelayDistribution delay;
 
   public GrpcResponseDefinitionBuilder(WireMockGrpc.Status grpcStatus) {
     this(grpcStatus, null);
@@ -59,6 +61,26 @@ public class GrpcResponseDefinitionBuilder {
     return this;
   }
 
+  public GrpcResponseDefinitionBuilder withFixedDelay(long milliseconds) {
+    this.delay = new FixedDelayDistribution(milliseconds);
+    return null;
+  }
+
+  public GrpcResponseDefinitionBuilder withRandomDelay(DelayDistribution distribution) {
+    this.delay = distribution;
+    return this;
+  }
+
+  public GrpcResponseDefinitionBuilder withLogNormalRandomDelay(
+      double medianMilliseconds, double sigma) {
+    return withRandomDelay(new LogNormal(medianMilliseconds, sigma));
+  }
+
+  public GrpcResponseDefinitionBuilder withUniformRandomDelay(
+      int lowerMilliseconds, int upperMilliseconds) {
+    return withRandomDelay(new UniformDistribution(lowerMilliseconds, upperMilliseconds));
+  }
+
   public ResponseDefinitionBuilder build() {
     if (fault != null) {
       return ResponseDefinitionBuilder.responseDefinition().withFault(fault);
@@ -74,6 +96,10 @@ public class GrpcResponseDefinitionBuilder {
 
     if (templatingEnabled) {
       responseDefinitionBuilder.withTransformers("response-template");
+    }
+
+    if (delay != null) {
+      responseDefinitionBuilder.withRandomDelay(delay);
     }
 
     return responseDefinitionBuilder.withBody(json);
