@@ -17,7 +17,6 @@ package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,6 +33,7 @@ import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -269,7 +269,7 @@ public class GrpcAcceptanceTest {
     stopwatch.stop();
 
     assertThat(greeting, is("Delayed hello"));
-    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(1000L));
+    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(1000L)));
   }
 
   @Test
@@ -284,6 +284,6 @@ public class GrpcAcceptanceTest {
     stopwatch.stop();
 
     assertThat(greeting, is("Delayed hello"));
-    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(500L));
+    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(500L)));
   }
 }
