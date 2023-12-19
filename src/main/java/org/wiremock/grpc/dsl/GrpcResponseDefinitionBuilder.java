@@ -63,7 +63,7 @@ public class GrpcResponseDefinitionBuilder {
 
   public GrpcResponseDefinitionBuilder withFixedDelay(long milliseconds) {
     this.delay = new FixedDelayDistribution(milliseconds);
-    return null;
+    return this;
   }
 
   public GrpcResponseDefinitionBuilder withRandomDelay(DelayDistribution distribution) {
