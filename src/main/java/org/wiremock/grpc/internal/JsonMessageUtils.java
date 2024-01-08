@@ -15,25 +15,22 @@
  */
 package org.wiremock.grpc.internal;
 
-import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.util.JsonFormat;
+import com.google.protobuf.TypeRegistry;
 
 public class JsonMessageUtils {
 
-  private static final JsonFormat.Printer jsonPrinter = JsonFormat.printer();
-  private static final JsonFormat.Parser jsonParser = JsonFormat.parser();
+  private static final JsonMessageConverter converter =
+      new JsonMessageConverter(TypeRegistry.getEmptyTypeRegistry());
 
   private JsonMessageUtils() {}
 
   public static String toJson(MessageOrBuilder message) {
-    return Exceptions.uncheck(() -> jsonPrinter.print(message), String.class);
+    return converter.toJson(message);
   }
 
-  @SuppressWarnings("unchecked")
   public static <T extends Message, B extends Message.Builder> T toMessage(String json, B builder) {
-    Exceptions.uncheck(() -> jsonParser.merge(json, builder));
-    return (T) builder.build();
+    return converter.toMessage(json, builder);
   }
 }

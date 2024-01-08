@@ -21,6 +21,7 @@ import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.TypeRegistry;
 import io.grpc.*;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.servlet.jakarta.GrpcServlet;
@@ -42,10 +43,22 @@ public class GrpcFilter extends HttpFilter {
   private final StubRequestHandler stubRequestHandler;
   private final List<Descriptors.FileDescriptor> fileDescriptors;
 
+  private final JsonMessageConverter jsonMessageConverter;
+
   public GrpcFilter(
       StubRequestHandler stubRequestHandler, List<Descriptors.FileDescriptor> fileDescriptors) {
     this.stubRequestHandler = stubRequestHandler;
     this.fileDescriptors = fileDescriptors;
+
+    final TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.newBuilder();
+    fileDescriptors.forEach(
+        fileDescriptor -> {
+          fileDescriptor.getMessageTypes().forEach(typeRegistryBuilder::add);
+        });
+
+    final TypeRegistry typeRegistry = typeRegistryBuilder.build();
+    jsonMessageConverter = new JsonMessageConverter(typeRegistry);
+
     grpcServlet = new GrpcServlet(buildServices());
   }
 
@@ -77,9 +90,10 @@ public class GrpcFilter extends HttpFilter {
     return methodDescriptor.isClientStreaming()
         ? ServerCalls.asyncClientStreamingCall(
             new ClientStreamingServerCallHandler(
-                stubRequestHandler, serviceDescriptor, methodDescriptor))
+                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter))
         : ServerCalls.asyncUnaryCall(
-            new UnaryServerCallHandler(stubRequestHandler, serviceDescriptor, methodDescriptor));
+            new UnaryServerCallHandler(
+                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter));
   }
 
   private static MethodDescriptor<DynamicMessage, DynamicMessage> buildMessageDescriptorInstance(

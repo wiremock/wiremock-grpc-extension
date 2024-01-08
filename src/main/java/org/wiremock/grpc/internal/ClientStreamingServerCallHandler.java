@@ -29,20 +29,15 @@ import io.grpc.stub.StreamObserver;
 import java.util.concurrent.atomic.AtomicReference;
 import org.wiremock.grpc.dsl.WireMockGrpc;
 
-public class ClientStreamingServerCallHandler
+public class ClientStreamingServerCallHandler extends BaseCallHandler
     implements ServerCalls.ClientStreamingMethod<DynamicMessage, DynamicMessage> {
-
-  private final StubRequestHandler stubRequestHandler;
-  private final Descriptors.ServiceDescriptor serviceDescriptor;
-  private final Descriptors.MethodDescriptor methodDescriptor;
 
   public ClientStreamingServerCallHandler(
       StubRequestHandler stubRequestHandler,
       Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor) {
-    this.stubRequestHandler = stubRequestHandler;
-    this.serviceDescriptor = serviceDescriptor;
-    this.methodDescriptor = methodDescriptor;
+      Descriptors.MethodDescriptor methodDescriptor,
+      JsonMessageConverter jsonMessageConverter) {
+    super(stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter);
   }
 
   @Override
@@ -67,7 +62,7 @@ public class ClientStreamingServerCallHandler
                 serverAddress.port,
                 serviceDescriptor.getFullName(),
                 methodDescriptor.getName(),
-                request);
+                jsonMessageConverter.toJson(request));
 
         stubRequestHandler.handle(
             wireMockRequest,
@@ -97,7 +92,7 @@ public class ClientStreamingServerCallHandler
                   DynamicMessage.newBuilder(methodDescriptor.getOutputType());
 
               final DynamicMessage response =
-                  JsonMessageUtils.toMessage(resp.getBodyAsString(), messageBuilder);
+                  jsonMessageConverter.toMessage(resp.getBodyAsString(), messageBuilder);
 
               responseStatus.set(WireMockGrpc.Status.OK);
               firstResponse.set(response);

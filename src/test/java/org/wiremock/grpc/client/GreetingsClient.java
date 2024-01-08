@@ -19,6 +19,7 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.request.HelloRequest;
 import com.example.grpc.response.HelloResponse;
 import com.github.tomakehurst.wiremock.common.Exceptions;
+import com.google.protobuf.Any;
 import com.google.protobuf.Empty;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
@@ -42,6 +43,17 @@ public class GreetingsClient {
 
   public String greet(String name) {
     return stub.greeting(HelloRequest.newBuilder().setName(name).build()).getGreeting();
+  }
+
+  public String greetAnyRequest() {
+    return stub.greetingAnyRequest(
+            Any.newBuilder().setTypeUrl("https://com.example.grpc.request.HelloRequest").build())
+        .getGreeting();
+  }
+
+  public String greetAnyResponse() {
+    return stub.greetingAnyResponse(HelloRequest.newBuilder().setName("whatever").build())
+        .getTypeUrl();
   }
 
   public List<String> oneGreetingManyReplies(String name) {

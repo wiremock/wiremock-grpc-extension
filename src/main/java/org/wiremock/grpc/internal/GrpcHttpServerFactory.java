@@ -35,10 +35,33 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 
 public class GrpcHttpServerFactory implements HttpServerFactory {
 
-  private final BlobStore protoDescriptorStore;
+  private final List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
-    this.protoDescriptorStore = protoDescriptorStore;
+    protoDescriptorStore
+        .getAllKeys()
+        .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
+        .map(
+            key ->
+                protoDescriptorStore
+                    .get(key)
+                    .map(
+                        data ->
+                            Exceptions.uncheck(
+                                () -> DescriptorProtos.FileDescriptorSet.parseFrom(data),
+                                DescriptorProtos.FileDescriptorSet.class)))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
+        .forEach(
+            fileDescriptorProto ->
+                Exceptions.uncheck(
+                    () ->
+                        fileDescriptors.add(
+                            Descriptors.FileDescriptor.buildFrom(
+                                fileDescriptorProto,
+                                fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
+                                true))));
   }
 
   @Override
@@ -55,33 +78,6 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
       @Override
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
-
-        List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
-
-        protoDescriptorStore
-            .getAllKeys()
-            .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
-            .map(
-                key ->
-                    protoDescriptorStore
-                        .get(key)
-                        .map(
-                            data ->
-                                Exceptions.uncheck(
-                                    () -> DescriptorProtos.FileDescriptorSet.parseFrom(data),
-                                    DescriptorProtos.FileDescriptorSet.class)))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
-            .forEach(
-                fileDescriptorProto ->
-                    Exceptions.uncheck(
-                        () ->
-                            fileDescriptors.add(
-                                Descriptors.FileDescriptor.buildFrom(
-                                    fileDescriptorProto,
-                                    fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
-                                    true))));
 
         final GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler, fileDescriptors);
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
