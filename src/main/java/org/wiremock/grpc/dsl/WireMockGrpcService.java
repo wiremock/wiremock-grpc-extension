@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 
 import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.wiremock.annotations.Beta;
 
@@ -50,5 +52,24 @@ public class WireMockGrpcService {
 
   public GrpcVerification verify(CountMatchingStrategy countMatch, String method) {
     return new GrpcVerification(wireMock, countMatch, serviceName, method);
+  }
+
+  /** Removes all transient stubs for the current gRPC service */
+  public void removeAllStubs() {
+    final String servicePath = "/" + serviceName;
+
+    wireMock.allStubMappings().getMappings().stream()
+        .filter(
+            mapping -> {
+              final RequestPattern requestMatcher = mapping.getRequest();
+              final RequestMethod requestMethod = requestMatcher.getMethod();
+              final String requestPath = requestMatcher.getUrlPath();
+
+              return (requestMethod != null)
+                  && (requestPath != null)
+                  && requestMethod.match(RequestMethod.POST).isExactMatch()
+                  && requestPath.startsWith(servicePath);
+            })
+        .forEach(wireMock::removeStubMapping);
   }
 }
