@@ -13,4 +13,4 @@ edit_uri: edit/main/
 use_directory_urls: false
 
 nav:
-  - Overview: README.md
+  - Overview: docs/
