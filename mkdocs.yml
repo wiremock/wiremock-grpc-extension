@@ -11,3 +11,6 @@ repo_name: WireMock gRPC Extension
 edit_uri: edit/main/
 
 use_directory_urls: false
+
+nav:
+  - index: docs/index.md
