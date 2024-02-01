@@ -4,7 +4,7 @@ site_description: WireMock gRPC Extension Documentation.
 site_url: https://wiremock.org/docs/grpc-extension/
 
 copyright: Copyright &copy; 2024 - WireMock Contributors
-docs_dir: .
+docs_dir: docs
 repo_url: https://github.com/wiremock/wiremock-grpc-extension
 repo_name: WireMock gRPC Extension
 
