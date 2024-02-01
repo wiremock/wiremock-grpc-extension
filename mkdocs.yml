@@ -13,4 +13,4 @@ edit_uri: edit/main/
 use_directory_urls: false
 
 nav:
-  - index: docs/index.md
+  - gRPC: docs/index.md
