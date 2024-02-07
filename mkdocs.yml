@@ -1,0 +1,17 @@
+site_name: WireMock gRPC Extension Documentation
+site_description: WireMock gRPC Extension Documentation.
+
+site_url: https://wiremock.org/docs/grpc-extension/
+
+copyright: Copyright &copy; 2024 - WireMock Contributors
+docs_dir: docs
+repo_url: https://github.com/wiremock/wiremock-grpc-extension
+repo_name: WireMock gRPC Extension
+
+# Adding docs/ twice is a workaround due to it being stripped out before the plugin calculates the edit_uri
+edit_uri: edit/docs-experiments/docs/docs/
+
+use_directory_urls: false
+
+nav:
+  - Overview: './'
