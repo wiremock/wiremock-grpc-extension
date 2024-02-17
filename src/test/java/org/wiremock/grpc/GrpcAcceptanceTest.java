@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,13 @@ package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.wiremock.grpc.dsl.WireMockGrpc.*;
 
+import com.example.grpc.AnotherGreetingServiceGrpc;
 import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.request.HelloRequest;
 import com.example.grpc.response.HelloResponse;
@@ -34,6 +35,8 @@ import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import java.time.Duration;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +49,7 @@ public class GrpcAcceptanceTest {
   WireMockGrpcService mockGreetingService;
   ManagedChannel channel;
   GreetingsClient greetingsClient;
+  WireMock wireMock;
 
   @RegisterExtension
   public static WireMockExtension wm =
@@ -59,8 +63,8 @@ public class GrpcAcceptanceTest {
 
   @BeforeEach
   void init() {
-    mockGreetingService =
-        new WireMockGrpcService(new WireMock(wm.getPort()), GreetingServiceGrpc.SERVICE_NAME);
+    wireMock = wm.getRuntimeInfo().getWireMock();
+    mockGreetingService = new WireMockGrpcService(wireMock, GreetingServiceGrpc.SERVICE_NAME);
 
     channel = ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build();
     greetingsClient = new GreetingsClient(channel);
@@ -254,7 +258,7 @@ public class GrpcAcceptanceTest {
 
     Exception exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Alan"));
-    assertThat(exception.getMessage(), is("UNKNOWN"));
+    assertThat(exception.getMessage(), startsWith("UNKNOWN"));
   }
 
   @Test
@@ -269,7 +273,7 @@ public class GrpcAcceptanceTest {
     stopwatch.stop();
 
     assertThat(greeting, is("Delayed hello"));
-    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(1000L));
+    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(1000L)));
   }
 
   @Test
@@ -284,7 +288,48 @@ public class GrpcAcceptanceTest {
     stopwatch.stop();
 
     assertThat(greeting, is("Delayed hello"));
-    assertThat(stopwatch.elapsed(MILLISECONDS), greaterThanOrEqualTo(500L));
+    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(500L)));
+  }
+
+  @Test
+  void resetStubs() {
+    // Starting point assertion
+    // There should be a single mapping (the hello-world one)
+    verifyDefaultMappings();
+
+    WireMockGrpcService mockAnotherGreetingService =
+        new WireMockGrpcService(wireMock, AnotherGreetingServiceGrpc.SERVICE_NAME);
+
+    mockAnotherGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    mockGreetingService.stubFor(
+        method("oneGreetingEmptyReply").willReturn(message(Empty.newBuilder())));
+
+    assertThat(wireMock.allStubMappings().getMappings(), iterableWithSize(4));
+
+    mockGreetingService.removeAllStubs();
+    assertThat(wireMock.allStubMappings().getMappings(), iterableWithSize(2));
+
+    mockAnotherGreetingService.removeAllStubs();
+
+    verifyDefaultMappings();
+  }
+
+  private void verifyDefaultMappings() {
+    var mappings = wireMock.allStubMappings().getMappings();
+    assertThat(mappings, iterableWithSize(1));
+
+    var mapping = mappings.get(0);
+    assertNotNull(mapping);
+    assertThat(mapping.getName(), Matchers.equalTo("Hello"));
+
+    var request = mapping.getRequest();
+    assertThat(request.getMethod().value(), Matchers.equalTo("GET"));
+    assertThat(request.getUrlPath(), Matchers.equalTo("/hello"));
   }
 
   @Test

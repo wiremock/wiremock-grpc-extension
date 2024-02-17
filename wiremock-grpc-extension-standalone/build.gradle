@@ -14,7 +14,7 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '6.22.0'
+  id 'com.diffplug.spotless' version '6.25.0'
   id 'com.github.johnrengelman.shadow' version '8.1.1'
   id "com.google.protobuf" version "0.9.4"
 }
@@ -149,7 +149,7 @@ shadowJar {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.0"
+    artifact = "com.google.protobuf:protoc:3.25.3"
   }
 
   plugins {
