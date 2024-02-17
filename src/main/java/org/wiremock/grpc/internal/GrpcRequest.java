@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import static java.util.Collections.*;
 import com.github.tomakehurst.wiremock.common.Encoding;
 import com.github.tomakehurst.wiremock.common.Strings;
 import com.github.tomakehurst.wiremock.http.*;
-import com.google.protobuf.DynamicMessage;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -37,19 +36,13 @@ public class GrpcRequest implements Request {
   private final String body;
 
   public GrpcRequest(
-      String scheme,
-      String host,
-      int port,
-      String serviceName,
-      String methodName,
-      DynamicMessage message) {
+      String scheme, String host, int port, String serviceName, String methodName, String body) {
     this.scheme = scheme;
     this.host = host;
     this.port = port;
     this.serviceName = serviceName;
     this.methodName = methodName;
-
-    body = JsonMessageUtils.toJson(message);
+    this.body = body;
   }
 
   @Override

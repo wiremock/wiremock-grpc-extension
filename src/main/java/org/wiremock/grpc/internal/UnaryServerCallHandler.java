@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,20 +29,15 @@ import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import org.wiremock.grpc.dsl.WireMockGrpc;
 
-public class UnaryServerCallHandler
+public class UnaryServerCallHandler extends BaseCallHandler
     implements ServerCalls.UnaryMethod<DynamicMessage, DynamicMessage> {
-
-  private final StubRequestHandler stubRequestHandler;
-  private final Descriptors.ServiceDescriptor serviceDescriptor;
-  private final Descriptors.MethodDescriptor methodDescriptor;
 
   public UnaryServerCallHandler(
       StubRequestHandler stubRequestHandler,
       Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor) {
-    this.stubRequestHandler = stubRequestHandler;
-    this.serviceDescriptor = serviceDescriptor;
-    this.methodDescriptor = methodDescriptor;
+      Descriptors.MethodDescriptor methodDescriptor,
+      JsonMessageConverter jsonMessageConverter) {
+    super(stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter);
   }
 
   @Override
@@ -56,7 +51,7 @@ public class UnaryServerCallHandler
             serverAddress.port,
             serviceDescriptor.getFullName(),
             methodDescriptor.getName(),
-            request);
+            jsonMessageConverter.toJson(request));
 
     stubRequestHandler.handle(
         wireMockRequest,
@@ -92,7 +87,7 @@ public class UnaryServerCallHandler
               DynamicMessage.newBuilder(methodDescriptor.getOutputType());
 
           final DynamicMessage response =
-              JsonMessageUtils.toMessage(resp.getBodyAsString(), messageBuilder);
+              jsonMessageConverter.toMessage(resp.getBodyAsString(), messageBuilder);
           responseObserver.onNext(response);
           responseObserver.onCompleted();
         },
