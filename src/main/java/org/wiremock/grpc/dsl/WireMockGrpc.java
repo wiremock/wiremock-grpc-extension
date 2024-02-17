@@ -53,7 +53,7 @@ public class WireMockGrpc {
   public static GrpcResponseDefinitionBuilder messageAsAny(MessageOrBuilder messageOrBuilder) {
     final String initialJson = JsonMessageUtils.toJson(messageOrBuilder);
     final ObjectNode jsonObject = Json.read(initialJson, ObjectNode.class);
-    jsonObject.put("@type", "https://" + messageOrBuilder.getDescriptorForType().getFullName());
+    jsonObject.put("@type", "type.googleapis.com/" + messageOrBuilder.getDescriptorForType().getFullName());
     String finalJson = Json.write(jsonObject);
     return new GrpcResponseDefinitionBuilder(Status.OK).fromJson(finalJson);
   }

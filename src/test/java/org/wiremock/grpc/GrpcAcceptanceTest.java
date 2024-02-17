@@ -351,7 +351,7 @@ public class GrpcAcceptanceTest {
 
     String typeUrl = greetingsClient.greetAnyResponse();
 
-    assertThat(typeUrl, is("https://com.example.grpc.response.HelloResponse"));
+    assertThat(typeUrl, is("type.googleapis.com/com.example.grpc.response.HelloResponse"));
   }
 
   @Test
@@ -360,10 +360,10 @@ public class GrpcAcceptanceTest {
         method("greetingAnyResponse")
             .willReturn(
                 json(
-                    "{ \"@type\": \"https://com.example.grpc.response.HelloResponse\", \"greeting\": \"Hiya\" }")));
+                    "{ \"@type\": \"type.googleapis.com/com.example.grpc.response.HelloResponse\", \"greeting\": \"Hiya\" }")));
 
     String typeUrl = greetingsClient.greetAnyResponse();
 
-    assertThat(typeUrl, is("https://com.example.grpc.response.HelloResponse"));
+    assertThat(typeUrl, is("type.googleapis.com/com.example.grpc.response.HelloResponse"));
   }
 }
