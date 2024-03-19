@@ -15,6 +15,7 @@
  */
 package org.wiremock.grpc.dsl;
 
+import static com.github.tomakehurst.wiremock.admin.model.ServeEventQuery.forStubMapping;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 
@@ -22,6 +23,7 @@ import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
+import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.wiremock.annotations.Beta;
 
@@ -70,6 +72,13 @@ public class WireMockGrpcService {
                   && requestMethod.match(RequestMethod.POST).isExactMatch()
                   && requestPath.startsWith(servicePath);
             })
-        .forEach(wireMock::removeStubMapping);
+        .forEach(this::removeStub);
+  }
+
+  private void removeStub(StubMapping stubMapping) {
+    wireMock.getServeEvents(forStubMapping(stubMapping)).stream()
+        .map(ServeEvent::getId)
+        .forEach(wireMock::removeEvent);
+    wireMock.removeStubMapping(stubMapping);
   }
 }
