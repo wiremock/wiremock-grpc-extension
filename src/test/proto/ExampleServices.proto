@@ -36,8 +36,5 @@ service GreetingService {
 }
 
 service AnotherGreetingService {
-    rpc greeting(com.example.grpc.request.HelloRequest) returns (com.example.grpc.response.HelloResponse);
-    rpc manyGreetingsOneReply(stream com.example.grpc.request.HelloRequest) returns (com.example.grpc.response.HelloResponse);
-    rpc oneGreetingManyReplies(com.example.grpc.request.HelloRequest) returns (stream com.example.grpc.response.HelloResponse);
-    rpc oneGreetingEmptyReply(com.example.grpc.request.HelloRequest) returns (google.protobuf.Empty);
+    rpc anotherGreeting(com.example.grpc.request.HelloRequest) returns (com.example.grpc.response.HelloResponse);
 }

@@ -41,14 +41,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.wiremock.grpc.client.AnotherGreetingsClient;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
 
 public class GrpcAcceptanceTest {
 
   WireMockGrpcService mockGreetingService;
+  WireMockGrpcService anotherMockGreetingService;
   ManagedChannel channel;
+  ManagedChannel anotherChannel;
   GreetingsClient greetingsClient;
+  AnotherGreetingsClient anotherGreetingsClient;
   WireMock wireMock;
 
   @RegisterExtension
@@ -65,14 +69,21 @@ public class GrpcAcceptanceTest {
   void init() {
     wireMock = wm.getRuntimeInfo().getWireMock();
     mockGreetingService = new WireMockGrpcService(wireMock, GreetingServiceGrpc.SERVICE_NAME);
+    anotherMockGreetingService =
+        new WireMockGrpcService(wireMock, AnotherGreetingServiceGrpc.SERVICE_NAME);
 
     channel = ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build();
     greetingsClient = new GreetingsClient(channel);
+
+    anotherChannel =
+        ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build();
+    anotherGreetingsClient = new AnotherGreetingsClient(anotherChannel);
   }
 
   @AfterEach
   void tearDown() {
     channel.shutdown();
+    anotherChannel.shutdown();
   }
 
   @Test
@@ -297,11 +308,9 @@ public class GrpcAcceptanceTest {
     // There should be a single mapping (the hello-world one)
     verifyDefaultMappings();
 
-    WireMockGrpcService mockAnotherGreetingService =
-        new WireMockGrpcService(wireMock, AnotherGreetingServiceGrpc.SERVICE_NAME);
-
-    mockAnotherGreetingService.stubFor(
-        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+    anotherMockGreetingService.stubFor(
+        method("anotherGreeting")
+            .willReturn(message(HelloResponse.newBuilder().setGreeting("Hello"))));
 
     mockGreetingService.stubFor(
         method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
@@ -314,7 +323,7 @@ public class GrpcAcceptanceTest {
     mockGreetingService.removeAllStubs();
     assertThat(wireMock.allStubMappings().getMappings(), iterableWithSize(2));
 
-    mockAnotherGreetingService.removeAllStubs();
+    anotherMockGreetingService.removeAllStubs();
 
     verifyDefaultMappings();
   }
@@ -330,6 +339,58 @@ public class GrpcAcceptanceTest {
     var request = mapping.getRequest();
     assertThat(request.getMethod().value(), Matchers.equalTo("GET"));
     assertThat(request.getUrlPath(), Matchers.equalTo("/hello"));
+  }
+
+  @Test
+  void resetAll() {
+    // Create a single stub for 2 different services
+    anotherMockGreetingService.stubFor(
+        method("anotherGreeting")
+            .willReturn(message(HelloResponse.newBuilder().setGreeting("Hello"))));
+
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hi"))));
+
+    // Perform some actions on each
+    assertThat(greetingsClient.greet("Tom"), is("Hi"));
+    assertThat(greetingsClient.greet("Tom"), is("Hi"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+
+    // Verify the interactions with each
+    mockGreetingService
+        .verify(2, "greeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom")));
+
+    anotherMockGreetingService
+        .verify(2, "anotherGreeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom")));
+
+    // Remove all from one of the services
+    mockGreetingService.resetAll();
+
+    // Create a new stub
+    mockGreetingService.stubFor(
+        method("greeting").willReturn(message(HelloResponse.newBuilder().setGreeting("Hello"))));
+
+    // Perform some actions on each
+    assertThat(greetingsClient.greet("Tom"), is("Hello"));
+    assertThat(greetingsClient.greet("Tom"), is("Hello"));
+    assertThat(greetingsClient.greet("Tom"), is("Hello"));
+    assertThat(greetingsClient.greet("Tom"), is("Hello"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+    assertThat(anotherGreetingsClient.greet("Tom"), is("Hello"));
+
+    // Verify the interactions with each
+    mockGreetingService
+        .verify(4, "greeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom")));
+
+    anotherMockGreetingService
+        .verify(6, "anotherGreeting")
+        .withRequestMessage(equalToMessage(HelloRequest.newBuilder().setName("Tom")));
   }
 
   @Test
