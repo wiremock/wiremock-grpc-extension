@@ -17,6 +17,8 @@ package org.wiremock.grpc.dsl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 
 import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -71,5 +73,16 @@ public class WireMockGrpcService {
                   && requestPath.startsWith(servicePath);
             })
         .forEach(wireMock::removeStubMapping);
+  }
+
+  /** Resets the request counters for the current gRPC service */
+  public void resetRequests() {
+    wireMock.removeEvents(postRequestedFor(urlPathMatching("/" + serviceName + "/.+")));
+  }
+
+  /** Removes all stubs and resets all requests for the current gRPC service */
+  public void resetAll() {
+    removeAllStubs();
+    resetRequests();
   }
 }
