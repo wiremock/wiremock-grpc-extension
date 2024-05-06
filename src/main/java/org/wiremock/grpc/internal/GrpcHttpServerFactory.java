@@ -26,42 +26,65 @@ import com.github.tomakehurst.wiremock.store.BlobStore;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import jakarta.servlet.DispatcherType;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import java.util.stream.Collectors;
 
 public class GrpcHttpServerFactory implements HttpServerFactory {
 
   private final List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
-    protoDescriptorStore
-        .getAllKeys()
-        .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
-        .map(
-            key ->
-                protoDescriptorStore
-                    .get(key)
-                    .map(
-                        data ->
+    List<DescriptorProtos.FileDescriptorProto> descriptorProtos = protoDescriptorStore
+            .getAllKeys()
+            .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
+            .map(
+                    key ->
+                            protoDescriptorStore
+                                    .get(key)
+                                    .map(
+                                            data ->
+                                                    Exceptions.uncheck(
+                                                            () -> DescriptorProtos.FileDescriptorSet.parseFrom(data),
+                                                            DescriptorProtos.FileDescriptorSet.class)))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
+            .collect(Collectors.toList());
+
+    convertToFileDescriptors(descriptorProtos);
+  }
+
+  public GrpcHttpServerFactory(List<URL> protoUrls) {
+    List<DescriptorProtos.FileDescriptorProto> protos = protoUrls.stream()
+            .filter(key -> key.getPath().endsWith(".dsc") || key.getPath().endsWith(".desc"))
+            .map(
+                    data ->
                             Exceptions.uncheck(
-                                () -> DescriptorProtos.FileDescriptorSet.parseFrom(data),
-                                DescriptorProtos.FileDescriptorSet.class)))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
-        .forEach(
-            fileDescriptorProto ->
-                Exceptions.uncheck(
-                    () ->
-                        fileDescriptors.add(
-                            Descriptors.FileDescriptor.buildFrom(
-                                fileDescriptorProto,
-                                fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
-                                true))));
+                                    () -> DescriptorProtos.FileDescriptorSet.parseFrom(data.openStream()),
+                                    DescriptorProtos.FileDescriptorSet.class))
+            .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
+            .collect(Collectors.toList());
+
+    convertToFileDescriptors(protos);
+  }
+
+  private void convertToFileDescriptors(List<DescriptorProtos.FileDescriptorProto> protos){
+    protos
+            .forEach(
+                    fileDescriptorProto ->
+                            Exceptions.uncheck(() ->
+                                    fileDescriptors.add(
+                                            Descriptors.FileDescriptor.buildFrom(
+                                                    fileDescriptorProto,
+                                                    fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
+                                                    true))));
   }
 
   @Override
