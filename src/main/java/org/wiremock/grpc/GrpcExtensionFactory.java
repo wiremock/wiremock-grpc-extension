@@ -18,6 +18,8 @@ package org.wiremock.grpc;
 import com.github.tomakehurst.wiremock.extension.Extension;
 import com.github.tomakehurst.wiremock.extension.ExtensionFactory;
 import com.github.tomakehurst.wiremock.extension.WireMockServices;
+
+import java.net.URL;
 import java.util.List;
 import org.wiremock.annotations.Beta;
 import org.wiremock.grpc.internal.GrpcHttpServerFactory;
@@ -25,8 +27,20 @@ import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
 public class GrpcExtensionFactory implements ExtensionFactory {
 
+  private List<URL> urls;
+
+  public GrpcExtensionFactory() {
+  }
+
+  public GrpcExtensionFactory(List<URL> urls) {
+    this.urls = urls;
+  }
+
   @Override
   public List<Extension> create(WireMockServices services) {
+    if(this.urls !=null){
+       return List.of(new GrpcHttpServerFactory(this.urls));
+    }
     return List.of(new GrpcHttpServerFactory(services.getStores().getBlobStore("grpc")));
   }
 }
