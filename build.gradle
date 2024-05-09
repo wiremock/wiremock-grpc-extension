@@ -36,7 +36,7 @@ allprojects {
     versions = [
       wiremock: "3.2.0",
       grpc    : "1.63.0",
-      protobuf: "3.25.3"
+      protobuf: "4.26.1"
     ]
 
     repoUser = this.hasProperty('sonatypeUser') ? sonatypeUser : 'default'
@@ -199,7 +199,7 @@ task localRelease {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:4.26.1"
   }
 
   plugins {
