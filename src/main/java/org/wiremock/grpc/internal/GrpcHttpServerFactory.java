@@ -79,7 +79,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
 
-        final GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler, fileDescriptors);
+        final GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler, fileDescriptors, options.notifier());
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
