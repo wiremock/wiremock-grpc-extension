@@ -251,7 +251,9 @@ task 'set-snapshot-version' {
 void updateFiles(String currentVersion, String nextVersion) {
 
   def filesWithVersion = [
-      'build.gradle': { "version = \"${it}" }
+    'build.gradle': {
+      "version = \"${it}"
+    }
   ]
 
   filesWithVersion.each { fileName, lineWithVersionTemplates ->
