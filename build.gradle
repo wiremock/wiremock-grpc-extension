@@ -238,3 +238,43 @@ nexusPublishing {
     }
   }
 }
+
+task 'set-snapshot-version' {
+  doLast {
+    def currentVersion = project.version
+    def nextVersion = "${majorVersion}.${minorVersion + 1}.0-SNAPSHOT"
+
+    updateFiles(currentVersion, nextVersion)
+  }
+}
+
+void updateFiles(String currentVersion, String nextVersion) {
+
+  def filesWithVersion = [
+      'build.gradle': { "version = \"${it}" }
+  ]
+
+  filesWithVersion.each { fileName, lineWithVersionTemplates ->
+    def file = file(fileName)
+    def lineWithVersionTemplateList = [lineWithVersionTemplates].flatten()
+
+    lineWithVersionTemplateList.each { lineWithVersionTemplate ->
+      def oldLine = lineWithVersionTemplate.call(currentVersion)
+      def newLine = lineWithVersionTemplate.call(nextVersion)
+      println "Replacing '${oldLine}' with '${newLine}' in ${fileName}"
+      file.text = file.text.replace(oldLine, newLine)
+    }
+  }
+}
+
+int getMajorVersion() {
+  Integer.valueOf(project.version.substring(0, project.version.indexOf('.')))
+}
+
+int getMinorVersion() {
+  Integer.valueOf(project.version.substring(project.version.indexOf('.') + 1, project.version.lastIndexOf('.')))
+}
+
+int getPatchVersion() {
+  Integer.valueOf(project.version.substring(project.version.lastIndexOf('.') + 1))
+}
