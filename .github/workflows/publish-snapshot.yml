@@ -31,7 +31,7 @@ jobs:
 
       - name: Publish core package
         id: publish_package
-        run: ./gradlew :publishMavenJavaPublicationToGitHubPackagesRepository --stacktrace
+        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --stacktrace
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
