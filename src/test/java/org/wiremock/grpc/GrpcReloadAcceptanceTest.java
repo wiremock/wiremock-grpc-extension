@@ -96,7 +96,7 @@ public class GrpcReloadAcceptanceTest {
 
     HttpClient httpClient = HttpClient.newHttpClient();
     HttpRequest loadFileDescriptorsHttpRequest =
-        HttpRequest.newBuilder(URI.create(wm.baseUrl()).resolve("__admin/ext/grpc/reset"))
+        HttpRequest.newBuilder(URI.create(wm.baseUrl()).resolve("/__admin/ext/grpc/reset"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
