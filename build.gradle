@@ -231,10 +231,10 @@ protobuf {
       task.descriptorSetOptions.includeImports = true
     }
     ofSourceSet('test').each { task ->
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/services.dsc"
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/greetings.dsc"
     }
     ofSourceSet('bookings').each { task ->
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/bookings/services.dsc"
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
     }
   }
 }
