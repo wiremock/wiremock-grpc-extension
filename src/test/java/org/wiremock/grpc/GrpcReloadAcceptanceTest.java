@@ -54,6 +54,7 @@ public class GrpcReloadAcceptanceTest {
   GreetingsClient greetingsClient;
   BookingServiceGrpc.BookingServiceBlockingStub bookingServiceStub;
   @TempDir Path tempDir;
+  HttpClient httpClient = HttpClient.newHttpClient();
 
   public WireMockServer wm;
 
@@ -80,38 +81,12 @@ public class GrpcReloadAcceptanceTest {
 
   @Test
   void descriptorFileCanBeReloadedAtRuntime() throws Exception {
-    wm.stubFor(
-        post(urlPathEqualTo("/com.example.grpc.BookingService/booking"))
-            .willReturn(
-                okJson("{\n" + "    \"id\": \"{{jsonPath request.body '$.id'}}\"\n" + "}")
-                    .withTransformers("response-template")));
-    wm.stubFor(
-        post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
-            .willReturn(
-                okJson(
-                        "{\n"
-                            + "    \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\"\n"
-                            + "}")
-                    .withTransformers("response-template")));
+    stubGrpcMethods();
 
-    HttpClient httpClient = HttpClient.newHttpClient();
-    HttpRequest loadFileDescriptorsHttpRequest =
-        HttpRequest.newBuilder(URI.create(wm.baseUrl()).resolve("/__admin/ext/grpc/reset"))
-            .POST(HttpRequest.BodyPublishers.noBody())
-            .build();
-
-    Path descriptorFile = Files.createFile(tempDir.resolve("grpc/services.dsc"));
-    Files.copy(
-        Paths.get("src/test/resources/wiremock/grpc/greetings.dsc"),
-        descriptorFile,
-        StandardCopyOption.REPLACE_EXISTING);
-    HttpResponse<String> response1 =
-        httpClient.send(loadFileDescriptorsHttpRequest, HttpResponse.BodyHandlers.ofString());
-    assertThat(response1.statusCode(), is(200));
-    assertThat(response1.body(), emptyString());
+    writeDescriptorFile("src/test/resources/wiremock/grpc/greetings.dsc");
+    reloadDescriptorFile();
 
     String greeting = greetingsClient.greet("Tom");
-
     assertThat(greeting, is("Hello Tom"));
 
     String bookingId = UUID.randomUUID().toString();
@@ -121,14 +96,8 @@ public class GrpcReloadAcceptanceTest {
             () -> bookingServiceStub.booking(BookingRequest.newBuilder().setId(bookingId).build()));
     assertThat(ex1.getStatus().getCode(), is(Status.Code.UNIMPLEMENTED));
 
-    Files.copy(
-        Paths.get("src/test/resources/wiremock/grpc/bookings.dsc"),
-        descriptorFile,
-        StandardCopyOption.REPLACE_EXISTING);
-    HttpResponse<String> response2 =
-        httpClient.send(loadFileDescriptorsHttpRequest, HttpResponse.BodyHandlers.ofString());
-    assertThat(response2.statusCode(), is(200));
-    assertThat(response2.body(), emptyString());
+    writeDescriptorFile("src/test/resources/wiremock/grpc/bookings.dsc");
+    reloadDescriptorFile();
 
     StatusRuntimeException ex2 =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Tom"));
@@ -136,7 +105,37 @@ public class GrpcReloadAcceptanceTest {
 
     BookingResponse booking =
         bookingServiceStub.booking(BookingRequest.newBuilder().setId(bookingId).build());
-
     assertThat(booking.getId(), is(bookingId));
+  }
+
+  private void stubGrpcMethods() {
+    wm.stubFor(
+        post(urlPathEqualTo("/com.example.grpc.BookingService/booking"))
+            .willReturn(
+                okJson("{\"id\": \"{{jsonPath request.body '$.id'}}\"}")
+                    .withTransformers("response-template")));
+    wm.stubFor(
+        post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
+            .willReturn(
+                okJson("{\"greeting\": \"Hello {{jsonPath request.body '$.name'}}\"}")
+                    .withTransformers("response-template")));
+  }
+
+  private void reloadDescriptorFile() throws IOException, InterruptedException {
+    HttpRequest loadFileDescriptorsHttpRequest =
+        HttpRequest.newBuilder(URI.create(wm.baseUrl()).resolve("/__admin/ext/grpc/reset"))
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    HttpResponse<String> response1 =
+        httpClient.send(loadFileDescriptorsHttpRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(response1.statusCode(), is(200));
+    assertThat(response1.body(), emptyString());
+  }
+
+  private void writeDescriptorFile(String descriptorFile) throws IOException {
+    Files.copy(
+        Paths.get(descriptorFile),
+        tempDir.resolve("grpc/services.dsc"),
+        StandardCopyOption.REPLACE_EXISTING);
   }
 }
