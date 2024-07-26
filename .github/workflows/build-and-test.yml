@@ -40,8 +40,12 @@ jobs:
         restore-keys: ${{ runner.os }}-gradle
 
     - name: Test
-      if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.jdk == 11 && github.event_name == 'push') }}
+      if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.jdk == 11 && github.event_name == 'push') && matrix.os != 'windows-latest' }}
       run: ./gradlew check --stacktrace --no-daemon
+
+    - name: Test-Windows
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: ./gradlew check --stacktrace --no-daemon -x spotlessCheck
 
     - name: Archive test report - ${{ matrix.os }} JDK ${{ matrix.jdk }}
       if: always()
