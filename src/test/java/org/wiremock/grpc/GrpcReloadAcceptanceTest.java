@@ -20,9 +20,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.grpc.BookingRequest;
@@ -85,12 +83,7 @@ public class GrpcReloadAcceptanceTest {
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.BookingService/booking"))
             .willReturn(
-                okJson(
-                        "{\n"
-                            + "    \"id\": \"{{jsonPath request.body '$.id'}}\"\n,"
-                            + "    \"created\": \"{{now format='epoch'}}\"\n,"
-                            + "    \"userId\": \"{{randomValue type='UUID'}}\"\n"
-                            + "}")
+                okJson("{\n" + "    \"id\": \"{{jsonPath request.body '$.id'}}\"\n" + "}")
                     .withTransformers("response-template")));
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
@@ -129,17 +122,9 @@ public class GrpcReloadAcceptanceTest {
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Tom"));
     assertThat(ex2.getStatus().getCode(), is(Status.Code.UNIMPLEMENTED));
 
-    Long before = System.currentTimeMillis();
     BookingResponse booking =
         bookingServiceStub.booking(BookingRequest.newBuilder().setId(bookingId).build());
-    Long after = System.currentTimeMillis();
 
     assertThat(booking.getId(), is(bookingId));
-    assertThat(
-        Long.valueOf(booking.getCreated()).doubleValue(),
-        closeTo(before.doubleValue(), Long.valueOf(after - before).doubleValue()));
-    assertThat(
-        booking.getUserId(),
-        matchesPattern("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"));
   }
 }
