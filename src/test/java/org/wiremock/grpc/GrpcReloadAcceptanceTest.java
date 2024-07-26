@@ -20,55 +20,54 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.grpc.BookingRequest;
 import com.example.grpc.BookingResponse;
 import com.example.grpc.BookingServiceGrpc;
-import com.github.tomakehurst.wiremock.common.SingleRootFileSource;
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.github.tomakehurst.wiremock.store.BlobStore;
-import com.github.tomakehurst.wiremock.store.files.FileSourceBlobStore;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.wiremock.grpc.client.GreetingsClient;
-import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 
 public class GrpcReloadAcceptanceTest {
 
   ManagedChannel channel;
   GreetingsClient greetingsClient;
   BookingServiceGrpc.BookingServiceBlockingStub bookingServiceStub;
-  static @TempDir File tempDir;
-  BlobStore blobStore = new FileSourceBlobStore(new SingleRootFileSource(tempDir));
-  GrpcHttpServerFactory grpcHttpServerFactory = new GrpcHttpServerFactory(blobStore);
+  @TempDir Path tempDir;
 
-  @RegisterExtension
-  public WireMockExtension wm =
-      WireMockExtension.newInstance()
-          .options(
-              wireMockConfig().dynamicPort().extensions(services -> List.of(grpcHttpServerFactory)))
-          .build();
+  public WireMockServer wm;
 
   @BeforeEach
-  void init() {
-    blobStore.clear();
-    channel = ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build();
+  void init() throws IOException {
+    Files.createDirectory(tempDir.resolve("grpc"));
+    wm =
+        new WireMockServer(
+            wireMockConfig()
+                .dynamicPort()
+                .withRootDirectory(tempDir.toAbsolutePath().toString())
+                .extensions(new GrpcExtensionFactory()));
+    wm.start();
+    channel = ManagedChannelBuilder.forAddress("localhost", wm.port()).usePlaintext().build();
     greetingsClient = new GreetingsClient(channel);
     bookingServiceStub = BookingServiceGrpc.newBlockingStub(channel);
   }
@@ -76,10 +75,11 @@ public class GrpcReloadAcceptanceTest {
   @AfterEach
   void tearDown() {
     channel.shutdown();
+    wm.stop();
   }
 
   @Test
-  void descriptorFileCanBeReloadedAtRuntime() throws IOException {
+  void descriptorFileCanBeReloadedAtRuntime() throws Exception {
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.BookingService/booking"))
             .willReturn(
@@ -94,12 +94,21 @@ public class GrpcReloadAcceptanceTest {
                             + "}")
                     .withTransformers("response-template")));
 
-    File descriptorFile = File.createTempFile("services", ".dsc", tempDir);
+    HttpClient httpClient = HttpClient.newHttpClient();
+    HttpRequest loadFileDescriptorsHttpRequest =
+        HttpRequest.newBuilder(URI.create(wm.baseUrl()).resolve("__admin/ext/grpc/reset"))
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+    Path descriptorFile = Files.createFile(tempDir.resolve("grpc/services.dsc"));
     Files.copy(
         Paths.get("src/test/resources/wiremock/grpc/greetings.dsc"),
-        descriptorFile.toPath(),
+        descriptorFile,
         StandardCopyOption.REPLACE_EXISTING);
-    grpcHttpServerFactory.loadFileDescriptors();
+    HttpResponse<String> response1 =
+        httpClient.send(loadFileDescriptorsHttpRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(response1.statusCode(), is(200));
+    assertThat(response1.body(), emptyString());
 
     String greeting = greetingsClient.greet("Tom");
 
@@ -114,9 +123,12 @@ public class GrpcReloadAcceptanceTest {
 
     Files.copy(
         Paths.get("src/test/resources/wiremock/grpc/bookings.dsc"),
-        descriptorFile.toPath(),
+        descriptorFile,
         StandardCopyOption.REPLACE_EXISTING);
-    grpcHttpServerFactory.loadFileDescriptors();
+    HttpResponse<String> response2 =
+        httpClient.send(loadFileDescriptorsHttpRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(response2.statusCode(), is(200));
+    assertThat(response2.body(), emptyString());
 
     StatusRuntimeException ex2 =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Tom"));
