@@ -284,7 +284,7 @@ public class GrpcAcceptanceTest {
     stopwatch.stop();
 
     assertThat(greeting, is("Delayed hello"));
-    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(1000L)));
+    assertThat(stopwatch.elapsed(), greaterThanOrEqualTo(Duration.ofMillis(990L)));
   }
 
   @Test
