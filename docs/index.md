@@ -139,7 +139,7 @@ and the <a id="wiremock-standalone-download" href="https://repo1.maven.org/maven
 Create a WireMock data directory with two subdirectories; one for stub mappings, and another for descriptor files:
 
 ```bash
-mkdir -p wiremock/mappings wiremock/grpc
+mkdir -p wiremock wiremock/mappings wiremock/grpc
 ```
 
 Compile your proto files into descriptors:
@@ -153,7 +153,7 @@ Run WireMock, with both directories you just created on the classpath:
 ```bash
 java -cp wiremock-standalone-{{ versions.wiremock_version }}.jar:wiremock-grpc-extension-standalone-{{ versions.grpc_extension_version }}.jar \
   wiremock.Run \
-  --root-dir wiremock-data
+  --root-dir wiremock
 ```
 
 ### Stubbing
