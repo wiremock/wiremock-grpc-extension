@@ -181,7 +181,7 @@ gRPC stubs are defined using WireMock's standard JSON format. Requests should al
 
 ## Reloading gRPC descriptor files
 
-If you plan to update your gRPC descriptor files at runtime, you can inform WireMock to reload all file descriptors via a POST to the admin API endpoint `/__admin/ext/grpc/reset`. 
+If you plan to update your gRPC descriptor files at runtime, you can inform WireMock to reload all file descriptors via a POST to the admin API endpoint `/__admin/ext/grpc/reset`.
 
 ## More Demos
 
