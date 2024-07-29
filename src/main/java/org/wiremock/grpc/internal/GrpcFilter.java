@@ -22,7 +22,10 @@ import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.TypeRegistry;
-import io.grpc.*;
+import io.grpc.BindableService;
+import io.grpc.MethodDescriptor;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.servlet.jakarta.GrpcServlet;
 import io.grpc.servlet.jakarta.ServletAdapter;
@@ -39,30 +42,24 @@ import java.util.stream.Collectors;
 
 public class GrpcFilter extends HttpFilter {
 
-  private final GrpcServlet grpcServlet;
+  private GrpcServlet grpcServlet;
   private final StubRequestHandler stubRequestHandler;
-  private final List<Descriptors.FileDescriptor> fileDescriptors;
 
-  private final JsonMessageConverter jsonMessageConverter;
-
-  public GrpcFilter(
-      StubRequestHandler stubRequestHandler, List<Descriptors.FileDescriptor> fileDescriptors) {
+  public GrpcFilter(StubRequestHandler stubRequestHandler) {
     this.stubRequestHandler = stubRequestHandler;
-    this.fileDescriptors = fileDescriptors;
-
-    final TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.newBuilder();
-    fileDescriptors.forEach(
-        fileDescriptor -> {
-          fileDescriptor.getMessageTypes().forEach(typeRegistryBuilder::add);
-        });
-
-    final TypeRegistry typeRegistry = typeRegistryBuilder.build();
-    jsonMessageConverter = new JsonMessageConverter(typeRegistry);
-
-    grpcServlet = new GrpcServlet(buildServices());
   }
 
-  private List<BindableService> buildServices() {
+  public void loadFileDescriptors(List<Descriptors.FileDescriptor> fileDescriptors) {
+    grpcServlet = new GrpcServlet(buildServices(fileDescriptors));
+  }
+
+  private List<BindableService> buildServices(List<Descriptors.FileDescriptor> fileDescriptors) {
+    final TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.newBuilder();
+    fileDescriptors.forEach(
+        fileDescriptor -> fileDescriptor.getMessageTypes().forEach(typeRegistryBuilder::add));
+    final TypeRegistry typeRegistry = typeRegistryBuilder.build();
+    JsonMessageConverter jsonMessageConverter = new JsonMessageConverter(typeRegistry);
+
     return fileDescriptors.stream()
         .flatMap(fileDescriptor -> fileDescriptor.getServices().stream())
         .map(
@@ -78,7 +75,10 @@ public class GrpcFilter extends HttpFilter {
                                   builder.addMethod(
                                       buildMessageDescriptorInstance(
                                           serviceDescriptor, methodDescriptor),
-                                      buildHandler(serviceDescriptor, methodDescriptor)));
+                                      buildHandler(
+                                          serviceDescriptor,
+                                          methodDescriptor,
+                                          jsonMessageConverter)));
                       return builder.build();
                     })
         .collect(Collectors.toUnmodifiableList());
@@ -86,7 +86,8 @@ public class GrpcFilter extends HttpFilter {
 
   private ServerCallHandler<DynamicMessage, DynamicMessage> buildHandler(
       Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor) {
+      Descriptors.MethodDescriptor methodDescriptor,
+      JsonMessageConverter jsonMessageConverter) {
     return methodDescriptor.isClientStreaming()
         ? ServerCalls.asyncClientStreamingCall(
             new ClientStreamingServerCallHandler(

@@ -35,9 +35,15 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 
 public class GrpcHttpServerFactory implements HttpServerFactory {
 
-  private final List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
+  private final BlobStore protoDescriptorStore;
+  private GrpcFilter grpcFilter;
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
+    this.protoDescriptorStore = protoDescriptorStore;
+  }
+
+  public void loadFileDescriptors() {
+    List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
     protoDescriptorStore
         .getAllKeys()
         .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
@@ -62,6 +68,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
                                 fileDescriptorProto,
                                 fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
                                 true))));
+    grpcFilter.loadFileDescriptors(fileDescriptors);
   }
 
   @Override
@@ -79,7 +86,8 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
 
-        final GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler, fileDescriptors);
+        grpcFilter = new GrpcFilter(stubRequestHandler);
+        loadFileDescriptors();
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }

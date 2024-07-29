@@ -197,6 +197,18 @@ task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
 
+sourceSets {
+  bookings
+  test {
+    compileClasspath += bookings.output
+    runtimeClasspath += bookings.output
+  }
+}
+
+configurations {
+  bookingsImplementation.extendsFrom testImplementation
+}
+
 protobuf {
   protoc {
     artifact = "com.google.protobuf:protoc:4.26.1"
@@ -216,14 +228,20 @@ protobuf {
 
     all().each { task ->
       task.generateDescriptorSet = true
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/services.dsc"
       task.descriptorSetOptions.includeImports = true
+    }
+    ofSourceSet('test').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/greetings.dsc"
+    }
+    ofSourceSet('bookings').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
     }
   }
 }
 
 processTestResources.dependsOn generateProto
 processTestResources.dependsOn generateTestProto
+processTestResources.dependsOn generateBookingsProto
 
 nexusPublishing {
   // See https://github.com/wiremock/community/blob/main/infra/maven-central.md

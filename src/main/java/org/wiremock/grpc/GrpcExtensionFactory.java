@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.github.tomakehurst.wiremock.extension.ExtensionFactory;
 import com.github.tomakehurst.wiremock.extension.WireMockServices;
 import java.util.List;
 import org.wiremock.annotations.Beta;
+import org.wiremock.grpc.internal.GrpcAdminApiExtension;
 import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
@@ -27,6 +28,8 @@ public class GrpcExtensionFactory implements ExtensionFactory {
 
   @Override
   public List<Extension> create(WireMockServices services) {
-    return List.of(new GrpcHttpServerFactory(services.getStores().getBlobStore("grpc")));
+    GrpcHttpServerFactory grpcHttpServerFactory =
+        new GrpcHttpServerFactory(services.getStores().getBlobStore("grpc"));
+    return List.of(new GrpcAdminApiExtension(grpcHttpServerFactory), grpcHttpServerFactory);
   }
 }
