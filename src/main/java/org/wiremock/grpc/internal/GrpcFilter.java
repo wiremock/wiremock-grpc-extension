@@ -15,18 +15,19 @@
  */
 package org.wiremock.grpc.internal;
 
+import static com.github.tomakehurst.wiremock.common.Pair.pair;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.github.tomakehurst.wiremock.common.Exceptions;
+import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.TypeRegistry;
-import io.grpc.BindableService;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerServiceDefinition;
+import io.grpc.*;
+import io.grpc.protobuf.ProtoServiceDescriptorSupplier;
 import io.grpc.protobuf.ProtoUtils;
+import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import io.grpc.servlet.jakarta.GrpcServlet;
 import io.grpc.servlet.jakarta.ServletAdapter;
 import io.grpc.stub.ServerCalls;
@@ -39,6 +40,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class GrpcFilter extends HttpFilter {
 
@@ -60,27 +62,66 @@ public class GrpcFilter extends HttpFilter {
     final TypeRegistry typeRegistry = typeRegistryBuilder.build();
     JsonMessageConverter jsonMessageConverter = new JsonMessageConverter(typeRegistry);
 
-    return fileDescriptors.stream()
-        .flatMap(fileDescriptor -> fileDescriptor.getServices().stream())
-        .map(
-            serviceDescriptor ->
-                (BindableService)
+    final Stream<BindableService> servicesFromDescriptors =
+        fileDescriptors.stream()
+            .flatMap(
+                fileDescriptor ->
+                    fileDescriptor.getServices().stream()
+                        .map(service -> pair(fileDescriptor, service)))
+            .map(
+                fileAndServiceDescriptor ->
                     () -> {
+                      final Descriptors.FileDescriptor fileDescriptor = fileAndServiceDescriptor.a;
+                      final Descriptors.ServiceDescriptor serviceDescriptor =
+                          fileAndServiceDescriptor.b;
+                      final ServiceDescriptor.Builder serviceDescriptorBuilder =
+                          ServiceDescriptor.newBuilder(serviceDescriptor.getFullName())
+                              .setSchemaDescriptor(
+                                  new ProtoServiceDescriptorSupplier() {
+
+                                    @Override
+                                    public Descriptors.FileDescriptor getFileDescriptor() {
+                                      return fileDescriptor;
+                                    }
+
+                                    @Override
+                                    public Descriptors.ServiceDescriptor getServiceDescriptor() {
+                                      return serviceDescriptor;
+                                    }
+                                  });
+
+                      final List<
+                              Pair<
+                                  MethodDescriptor<DynamicMessage, DynamicMessage>,
+                                  ServerCallHandler<DynamicMessage, DynamicMessage>>>
+                          methodDescriptorHandlerPairs =
+                              serviceDescriptor.getMethods().stream()
+                                  .map(
+                                      methodDescriptor ->
+                                          pair(
+                                              buildMessageDescriptorInstance(
+                                                  serviceDescriptor, methodDescriptor),
+                                              buildHandler(
+                                                  serviceDescriptor,
+                                                  methodDescriptor,
+                                                  jsonMessageConverter)))
+                                  .collect(Collectors.toList());
+
+                      methodDescriptorHandlerPairs.stream()
+                          .map(pair -> pair.a)
+                          .forEach(serviceDescriptorBuilder::addMethod);
+
                       final ServerServiceDefinition.Builder builder =
-                          ServerServiceDefinition.builder(serviceDescriptor.getFullName());
-                      serviceDescriptor
-                          .getMethods()
-                          .forEach(
-                              methodDescriptor ->
-                                  builder.addMethod(
-                                      buildMessageDescriptorInstance(
-                                          serviceDescriptor, methodDescriptor),
-                                      buildHandler(
-                                          serviceDescriptor,
-                                          methodDescriptor,
-                                          jsonMessageConverter)));
+                          ServerServiceDefinition.builder(serviceDescriptorBuilder.build());
+
+                      methodDescriptorHandlerPairs.forEach(
+                          pair -> builder.addMethod(pair.a, pair.b));
+
                       return builder.build();
-                    })
+                    });
+
+    final BindableService reflectionService = ProtoReflectionServiceV1.newInstance();
+    return Stream.concat(servicesFromDescriptors, Stream.of(reflectionService))
         .collect(Collectors.toUnmodifiableList());
   }
 
