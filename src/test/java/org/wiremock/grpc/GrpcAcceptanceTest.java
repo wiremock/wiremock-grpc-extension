@@ -17,10 +17,10 @@ package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.wiremock.grpc.dsl.WireMockGrpc.*;
 
 import com.example.grpc.AnotherGreetingServiceGrpc;
@@ -35,7 +35,15 @@ import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.reflection.v1.ServerReflectionGrpc;
+import io.grpc.reflection.v1.ServerReflectionRequest;
+import io.grpc.reflection.v1.ServerReflectionResponse;
+import io.grpc.reflection.v1.ServiceResponse;
+import io.grpc.stub.StreamObserver;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -426,5 +434,39 @@ public class GrpcAcceptanceTest {
     String typeUrl = greetingsClient.greetAnyResponse();
 
     assertThat(typeUrl, is("type.googleapis.com/com.example.grpc.response.HelloResponse"));
+  }
+
+  @Test
+  void reflection() throws InterruptedException {
+    CountDownLatch latch = new CountDownLatch(1);
+    List<ServerReflectionResponse> serverReflectionResponses = new ArrayList<>();
+    StreamObserver<ServerReflectionRequest> stream =
+        ServerReflectionGrpc.newStub(channel)
+            .serverReflectionInfo(
+                new StreamObserver<>() {
+                  @Override
+                  public void onNext(ServerReflectionResponse value) {
+                    serverReflectionResponses.add(value);
+                  }
+
+                  @Override
+                  public void onError(Throwable t) {
+                    t.printStackTrace(System.err);
+                  }
+
+                  @Override
+                  public void onCompleted() {
+                    latch.countDown();
+                  }
+                });
+    stream.onNext(ServerReflectionRequest.newBuilder().setListServices("").build());
+    stream.onCompleted();
+    assertTrue(latch.await(5, SECONDS));
+
+    System.out.println(serverReflectionResponses);
+
+    List<ServiceResponse> serviceList =
+        serverReflectionResponses.get(0).getListServicesResponse().getServiceList();
+    assertThat(serviceList.size(), is(4));
   }
 }
