@@ -23,7 +23,7 @@ import io.grpc.Status;
 public class GrpcStatusUtils {
 
   // https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md
-  public static final Map<Integer, Pair<Status, String>> httpToGrpcStatusMappings =
+  public static final Map<Integer, Pair<Status, String>> errorHttpToGrpcStatusMappings =
       Map.of(
           400,
           new Pair<>(Status.INTERNAL, "Bad Request"),

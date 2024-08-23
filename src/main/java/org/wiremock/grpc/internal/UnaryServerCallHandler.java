@@ -62,9 +62,9 @@ public class UnaryServerCallHandler extends BaseCallHandler
           delayIfRequired(resp);
 
           if (!statusHeader.isPresent()
-              && GrpcStatusUtils.httpToGrpcStatusMappings.containsKey(resp.getStatus())) {
+              && GrpcStatusUtils.errorHttpToGrpcStatusMappings.containsKey(resp.getStatus())) {
             final Pair<Status, String> statusMapping =
-                GrpcStatusUtils.httpToGrpcStatusMappings.get(resp.getStatus());
+                GrpcStatusUtils.errorHttpToGrpcStatusMappings.get(resp.getStatus());
             responseObserver.onError(
                 statusMapping.a.withDescription(statusMapping.b).asRuntimeException());
             return;
