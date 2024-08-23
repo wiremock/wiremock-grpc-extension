@@ -28,8 +28,8 @@ import io.grpc.*;
 import io.grpc.protobuf.ProtoServiceDescriptorSupplier;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
-import io.grpc.servlet.jakarta.GrpcServlet;
 import io.grpc.servlet.jakarta.ServletAdapter;
+import io.grpc.servlet.jakarta.ServletServerBuilder;
 import io.grpc.stub.ServerCalls;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -44,7 +44,8 @@ import java.util.stream.Stream;
 
 public class GrpcFilter extends HttpFilter {
 
-  private GrpcServlet grpcServlet;
+  //  private GrpcServlet grpcServlet;
+  private ServletAdapter servletAdapter;
   private final StubRequestHandler stubRequestHandler;
 
   public GrpcFilter(StubRequestHandler stubRequestHandler) {
@@ -52,7 +53,20 @@ public class GrpcFilter extends HttpFilter {
   }
 
   public void loadFileDescriptors(List<Descriptors.FileDescriptor> fileDescriptors) {
-    grpcServlet = new GrpcServlet(buildServices(fileDescriptors));
+    final List<BindableService> services = buildServices(fileDescriptors);
+    servletAdapter = loadServices(services);
+  }
+
+  private static ServletAdapter loadServices(List<? extends BindableService> bindableServices) {
+    final HeaderCopyingServerInterceptor headerCopyingServerInterceptor =
+        new HeaderCopyingServerInterceptor();
+    final ServletServerBuilder serverBuilder = new ServletServerBuilder();
+    bindableServices.forEach(
+        service -> {
+          serverBuilder.addService(
+              ServerInterceptors.intercept(service, headerCopyingServerInterceptor));
+        });
+    return serverBuilder.buildServletAdapter();
   }
 
   private List<BindableService> buildServices(List<Descriptors.FileDescriptor> fileDescriptors) {
@@ -178,7 +192,26 @@ public class GrpcFilter extends HttpFilter {
     }
 
     ServerAddress.set(request.getScheme(), request.getLocalAddr(), request.getLocalPort());
-    grpcServlet.service(request, response);
+
+    final String method = request.getMethod();
+    if (isPost(method)) {
+      servletAdapter.doPost(request, response);
+    } else if (isGet(method)) {
+      servletAdapter.doGet(request, response);
+    }
+  }
+
+  @Override
+  public void destroy() {
+    servletAdapter.destroy();
+  }
+
+  private static boolean isGet(String method) {
+    return method.equalsIgnoreCase("GET");
+  }
+
+  private static boolean isPost(String method) {
+    return method.equalsIgnoreCase("POST");
   }
 
   public static class ServerAddress {
