@@ -107,7 +107,7 @@ dependencies {
   //  testImplementation project(":")
   testImplementation(platform('org.junit:junit-bom:5.11.0'))
   testImplementation "org.junit.jupiter:junit-jupiter"
-  testImplementation "org.hamcrest:hamcrest-core:2.2"
+  testImplementation "org.hamcrest:hamcrest-core:3.0"
   testImplementation "org.hamcrest:hamcrest-library:2.2"
   testImplementation 'org.awaitility:awaitility:4.2.2'
 
