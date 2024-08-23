@@ -145,6 +145,12 @@ shadowJar {
   dependencies {
     exclude(dependency('org.slf4j:slf4j-api'))
   }
+
+  exclude 'META-INF/maven/**'
+  exclude 'META-INF/versions/17/**'
+  exclude 'META-INF/versions/21/**'
+  exclude 'module-info.class'
+  exclude 'handlebars-*.js'
 }
 
 protobuf {
