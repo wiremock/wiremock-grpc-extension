@@ -41,12 +41,6 @@ import static org.wiremock.grpc.dsl.WireMockGrpc.message;
 import static org.wiremock.grpc.dsl.WireMockGrpc.messageAsAny;
 import static org.wiremock.grpc.dsl.WireMockGrpc.method;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.stream.Stream;
-
 import com.example.grpc.AnotherGreetingServiceGrpc;
 import com.example.grpc.GreetingServiceGrpc;
 import com.example.grpc.request.HelloRequest;
@@ -64,6 +58,11 @@ import io.grpc.reflection.v1.ServerReflectionRequest;
 import io.grpc.reflection.v1.ServerReflectionResponse;
 import io.grpc.reflection.v1.ServiceResponse;
 import io.grpc.stub.StreamObserver;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
