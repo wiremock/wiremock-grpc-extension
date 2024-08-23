@@ -15,13 +15,37 @@
  */
 package org.wiremock.grpc;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.wiremock.grpc.dsl.WireMockGrpc.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.iterableWithSize;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.wiremock.grpc.dsl.WireMockGrpc.Status;
+import static org.wiremock.grpc.dsl.WireMockGrpc.equalToMessage;
+import static org.wiremock.grpc.dsl.WireMockGrpc.json;
+import static org.wiremock.grpc.dsl.WireMockGrpc.jsonTemplate;
+import static org.wiremock.grpc.dsl.WireMockGrpc.message;
+import static org.wiremock.grpc.dsl.WireMockGrpc.messageAsAny;
+import static org.wiremock.grpc.dsl.WireMockGrpc.method;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 
 import com.example.grpc.AnotherGreetingServiceGrpc;
 import com.example.grpc.GreetingServiceGrpc;
@@ -40,18 +64,18 @@ import io.grpc.reflection.v1.ServerReflectionRequest;
 import io.grpc.reflection.v1.ServerReflectionResponse;
 import io.grpc.reflection.v1.ServiceResponse;
 import io.grpc.stub.StreamObserver;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.wiremock.grpc.client.AnotherGreetingsClient;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
+import org.wiremock.grpc.internal.GrpcStatusUtils;
 
 public class GrpcAcceptanceTest {
 
@@ -72,6 +96,14 @@ public class GrpcAcceptanceTest {
                   .withRootDirectory("src/test/resources/wiremock")
                   .extensions(new GrpcExtensionFactory()))
           .build();
+
+  public static Stream<Arguments> statusProvider() {
+    return GrpcStatusUtils.errorHttpToGrpcStatusMappings.entrySet().stream()
+        .map(
+            entry ->
+                Arguments.of(
+                    entry.getKey(), entry.getValue().a.getCode().name(), entry.getValue().b));
+  }
 
   @BeforeEach
   void init() {
@@ -167,7 +199,21 @@ public class GrpcAcceptanceTest {
     StatusRuntimeException exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Wrong"));
     assertThat(
-        exception.getMessage(), is("NOT_FOUND: No matching stub mapping found for gRPC request"));
+        exception.getMessage(),
+        is("UNIMPLEMENTED: No matching stub mapping found for gRPC request"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("statusProvider")
+  void shouldReturnTheCorrectGrpcErrorStatusForCorrespondingHttpStatus(
+      Integer httpStatus, String grpcStatus, String message) {
+    wm.stubFor(
+        post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
+            .willReturn(aResponse().withStatus(httpStatus)));
+
+    StatusRuntimeException exception =
+        assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Tom"));
+    assertThat(exception.getMessage(), is(grpcStatus + ": " + message));
   }
 
   @Test
@@ -204,7 +250,7 @@ public class GrpcAcceptanceTest {
     assertThat(exception.getCause(), instanceOf(StatusRuntimeException.class));
     assertThat(
         exception.getCause().getMessage(),
-        is("NOT_FOUND: No matching stub mapping found for gRPC request"));
+        is("UNIMPLEMENTED: No matching stub mapping found for gRPC request"));
   }
 
   @Test
@@ -219,6 +265,21 @@ public class GrpcAcceptanceTest {
             Exception.class, () -> greetingsClient.manyGreetingsOneReply("Tom", "Jerf", "Rob"));
     assertThat(exception.getCause(), instanceOf(StatusRuntimeException.class));
     assertThat(exception.getCause().getMessage(), is("INVALID_ARGUMENT: Jerf is not a valid name"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("statusProvider")
+  void throwsReturnedErrorFromStreamingClientCallWhenServerOnlyReturnsAHttpStatus(
+      Integer httpStatus, String grpcStatus, String message) {
+    wm.stubFor(
+        post(urlPathEqualTo("/com.example.grpc.GreetingService/manyGreetingsOneReply"))
+            .willReturn(aResponse().withStatus(httpStatus)));
+
+    Exception exception =
+        assertThrows(
+            Exception.class, () -> greetingsClient.manyGreetingsOneReply("Tom", "Jerf", "Rob"));
+    assertThat(exception.getCause(), instanceOf(StatusRuntimeException.class));
+    assertThat(exception.getCause().getMessage(), is(grpcStatus + ": " + message));
   }
 
   @Test
