@@ -15,12 +15,13 @@
  */
 package org.wiremock.grpc.internal;
 
-import java.util.Map;
-
 import com.github.tomakehurst.wiremock.common.Pair;
 import io.grpc.Status;
+import java.util.Map;
 
 public class GrpcStatusUtils {
+
+  private GrpcStatusUtils() {}
 
   // https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md
   public static final Map<Integer, Pair<Status, String>> errorHttpToGrpcStatusMappings =
@@ -41,6 +42,4 @@ public class GrpcStatusUtils {
           new Pair<>(Status.UNAVAILABLE, "Service Unavailable"),
           504,
           new Pair<>(Status.UNAVAILABLE, "Gateway Timeout"));
-
-  private GrpcStatusUtils() {}
 }

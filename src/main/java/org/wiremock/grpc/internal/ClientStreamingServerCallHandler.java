@@ -18,8 +18,6 @@ package org.wiremock.grpc.internal;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_NAME;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_REASON;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
@@ -29,6 +27,7 @@ import com.google.protobuf.DynamicMessage;
 import io.grpc.Status;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
+import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jetty.http.HttpStatus;
 import org.wiremock.grpc.dsl.WireMockGrpc;
 
