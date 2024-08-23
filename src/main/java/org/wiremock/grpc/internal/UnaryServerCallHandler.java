@@ -19,6 +19,7 @@ import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_NA
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_REASON;
 import static org.wiremock.grpc.internal.Delays.delayIfRequired;
 
+import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
@@ -60,11 +61,12 @@ public class UnaryServerCallHandler extends BaseCallHandler
 
           delayIfRequired(resp);
 
-          if (!statusHeader.isPresent() && resp.getStatus() == 404) {
+          if (!statusHeader.isPresent()
+              && GrpcStatusUtils.httpToGrpcStatusMappings.containsKey(resp.getStatus())) {
+            final Pair<Status, String> statusMapping =
+                GrpcStatusUtils.httpToGrpcStatusMappings.get(resp.getStatus());
             responseObserver.onError(
-                Status.NOT_FOUND
-                    .withDescription("No matching stub mapping found for gRPC request")
-                    .asRuntimeException());
+                statusMapping.a.withDescription(statusMapping.b).asRuntimeException());
             return;
           }
 
