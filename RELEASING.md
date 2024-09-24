@@ -1,4 +1,4 @@
-# Checklist for releasing WireMock
+# Checklist for releasing the WireMock gRPC Extension
 
 - [ ] Bump version number
 - [ ] Publish the release note
