@@ -15,12 +15,11 @@
  */
 package org.wiremock.grpc.internal;
 
+import com.github.tomakehurst.wiremock.admin.Router;
 import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.github.tomakehurst.wiremock.core.Options;
-import com.github.tomakehurst.wiremock.http.AdminRequestHandler;
-import com.github.tomakehurst.wiremock.http.HttpServer;
-import com.github.tomakehurst.wiremock.http.HttpServerFactory;
-import com.github.tomakehurst.wiremock.http.StubRequestHandler;
+import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
+import com.github.tomakehurst.wiremock.http.*;
 import com.github.tomakehurst.wiremock.jetty11.Jetty11HttpServer;
 import com.github.tomakehurst.wiremock.store.BlobStore;
 import com.google.protobuf.DescriptorProtos;
@@ -33,10 +32,10 @@ import java.util.Optional;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
-public class GrpcHttpServerFactory implements HttpServerFactory {
+public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtension {
 
   private final BlobStore protoDescriptorStore;
-  private GrpcFilter grpcFilter;
+  protected GrpcFilter grpcFilter;
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
     this.protoDescriptorStore = protoDescriptorStore;
@@ -92,5 +91,10 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
     };
+  }
+
+  @Override
+  public void contributeAdminApiRoutes(Router router) {
+    router.add(RequestMethod.POST, "/ext/grpc/reset", new GrpcResetAdminApiTask(this));
   }
 }

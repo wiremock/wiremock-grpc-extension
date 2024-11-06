@@ -1,3 +1,4 @@
 rootProject.name = 'wiremock-grpc-extension'
 
 include 'wiremock-grpc-extension-standalone'
+include 'wiremock-grpc-extension-jetty12'
