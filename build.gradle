@@ -9,6 +9,7 @@ buildscript {
 
 plugins {
   id 'java-library'
+  id 'java-test-fixtures'
   id 'signing'
   id 'maven-publish'
   id 'idea'
@@ -34,7 +35,7 @@ allprojects {
 
   ext {
     versions = [
-      wiremock: "3.9.2",
+      wiremock: "3.10.0",
       grpc    : "1.68.0",
       protobuf: "3.25.5"
     ]
@@ -104,14 +105,20 @@ dependencies {
 
   implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
-  //  testImplementation project(":")
-  testImplementation(platform('org.junit:junit-bom:5.11.3'))
-  testImplementation "org.junit.jupiter:junit-jupiter"
-  testImplementation "org.hamcrest:hamcrest-core:3.0"
-  testImplementation "org.hamcrest:hamcrest-library:3.0"
-  testImplementation 'org.awaitility:awaitility:4.2.2'
+  testFixturesApi(platform('org.junit:junit-bom:5.11.3'))
+  testFixturesApi "org.junit.jupiter:junit-jupiter"
+  testFixturesApi "org.hamcrest:hamcrest-core:3.0"
+  testFixturesApi "org.hamcrest:hamcrest-library:3.0"
+  testFixturesApi 'org.awaitility:awaitility:4.2.2'
 
-  testImplementation "io.grpc:grpc-okhttp"
+  testFixturesApi "io.grpc:grpc-okhttp"
+
+  testFixturesApi 'javax.annotation:javax.annotation-api:1.3.2'
+
+  testImplementation(testFixtures(project(":")), {
+    exclude group: 'org.eclipse.jetty'
+    exclude group: 'org.eclipse.jetty.http2'
+  })
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -231,8 +238,8 @@ protobuf {
       task.generateDescriptorSet = true
       task.descriptorSetOptions.includeImports = true
     }
-    ofSourceSet('test').each { task ->
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/greetings.dsc"
+    ofSourceSet('testFixtures').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/testFixtures/resources/wiremock/grpc/greetings.dsc"
     }
     ofSourceSet('bookings').each { task ->
       task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
@@ -243,6 +250,7 @@ protobuf {
 processTestResources.dependsOn generateProto
 processTestResources.dependsOn generateTestProto
 processTestResources.dependsOn generateBookingsProto
+processTestFixturesResources.dependsOn generateTestFixturesProto
 
 nexusPublishing {
   // See https://github.com/wiremock/community/blob/main/infra/maven-central.md
