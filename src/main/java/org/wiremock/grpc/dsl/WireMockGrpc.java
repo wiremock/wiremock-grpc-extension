@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.google.protobuf.MessageOrBuilder;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.wiremock.annotations.Beta;
 import org.wiremock.grpc.internal.JsonMessageUtils;
 
@@ -47,6 +49,17 @@ public class WireMockGrpc {
 
   public static GrpcResponseDefinitionBuilder message(MessageOrBuilder messageOrBuilder) {
     final String json = JsonMessageUtils.toJson(messageOrBuilder);
+    return new GrpcResponseDefinitionBuilder(Status.OK).fromJson(json);
+  }
+
+  public static GrpcResponseDefinitionBuilder messages(
+      List<MessageOrBuilder> messageOrBuilderList) {
+    final String json =
+        "[\n"
+            + messageOrBuilderList.stream()
+                .map(JsonMessageUtils::toJson)
+                .collect(Collectors.joining(",\n"))
+            + "\n]";
     return new GrpcResponseDefinitionBuilder(Status.OK).fromJson(json);
   }
 
