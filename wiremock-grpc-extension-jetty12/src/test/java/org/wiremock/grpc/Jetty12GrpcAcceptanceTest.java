@@ -26,6 +26,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.iterableWithSize;
@@ -39,6 +40,7 @@ import static org.wiremock.grpc.dsl.WireMockGrpc.json;
 import static org.wiremock.grpc.dsl.WireMockGrpc.jsonTemplate;
 import static org.wiremock.grpc.dsl.WireMockGrpc.message;
 import static org.wiremock.grpc.dsl.WireMockGrpc.messageAsAny;
+import static org.wiremock.grpc.dsl.WireMockGrpc.messages;
 import static org.wiremock.grpc.dsl.WireMockGrpc.method;
 
 import com.example.grpc.AnotherGreetingServiceGrpc;
@@ -283,12 +285,25 @@ public class Jetty12GrpcAcceptanceTest {
   }
 
   @Test
-  void returnsStreamedResponseToUnaryRequest() {
+  void returnsStreamedResponseToUnaryRequestWithSingleItem() {
     mockGreetingService.stubFor(
         method("oneGreetingManyReplies")
             .willReturn(message(HelloResponse.newBuilder().setGreeting("Hi Tom"))));
 
     assertThat(greetingsClient.oneGreetingManyReplies("Tom"), hasItem("Hi Tom"));
+  }
+
+  @Test
+  void returnsStreamedResponseToUnaryRequest() {
+    mockGreetingService.stubFor(
+        method("oneGreetingManyReplies")
+            .willReturn(
+                messages(
+                    List.of(
+                        HelloResponse.newBuilder().setGreeting("Hi Tom"),
+                        HelloResponse.newBuilder().setGreeting("Hi Tom again")))));
+
+    assertThat(greetingsClient.oneGreetingManyReplies("Tom"), hasItems("Hi Tom", "Hi Tom again"));
   }
 
   @Test
@@ -338,7 +353,7 @@ public class Jetty12GrpcAcceptanceTest {
 
     Exception exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Alan"));
-    assertThat(exception.getMessage(), startsWith("UNKNOWN"));
+    assertThat(exception.getMessage(), startsWith("CANCELLED"));
   }
 
   @Test
