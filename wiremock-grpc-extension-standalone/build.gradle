@@ -110,6 +110,7 @@ shadowJar {
   archiveBaseName.set('wiremock-grpc-extension-standalone')
   archiveClassifier = null
 
+  mergeServiceFiles()
   relocate "io.grpc", 'wiremock.grpc.io.grpc'
   relocate "io.perfmark", 'wiremock.grpc.io.perfmark'
 
