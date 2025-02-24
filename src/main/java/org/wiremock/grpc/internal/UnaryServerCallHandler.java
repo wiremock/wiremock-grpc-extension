@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,11 @@ public class UnaryServerCallHandler extends BaseCallHandler
             serverAddress.port,
             serviceDescriptor.getFullName(),
             methodDescriptor.getName(),
-            jsonMessageConverter.toJson(request));
+            jsonMessageConverter.toJson(request),
+            serviceDescriptor,
+            methodDescriptor,
+            jsonMessageConverter,
+            request);
 
     stubRequestHandler.handle(
         wireMockRequest,

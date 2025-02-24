@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import static java.util.Collections.*;
 import com.github.tomakehurst.wiremock.common.Encoding;
 import com.github.tomakehurst.wiremock.common.Strings;
 import com.github.tomakehurst.wiremock.http.*;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -32,17 +34,33 @@ public class GrpcRequest implements Request {
   private final int port;
   private final String serviceName;
   private final String methodName;
-
   private final String body;
+  private final Descriptors.ServiceDescriptor serviceDescriptor;
+  private final Descriptors.MethodDescriptor methodDescriptor;
+  private final JsonMessageConverter jsonMessageConverter;
+  private final DynamicMessage dynamicMessage;
 
   public GrpcRequest(
-      String scheme, String host, int port, String serviceName, String methodName, String body) {
+      String scheme,
+      String host,
+      int port,
+      String serviceName,
+      String methodName,
+      String body,
+      Descriptors.ServiceDescriptor serviceDescriptor,
+      Descriptors.MethodDescriptor methodDescriptor,
+      JsonMessageConverter jsonMessageConverter,
+      DynamicMessage dynamicMessage) {
     this.scheme = scheme;
     this.host = host;
     this.port = port;
     this.serviceName = serviceName;
     this.methodName = methodName;
     this.body = body;
+    this.serviceDescriptor = serviceDescriptor;
+    this.methodDescriptor = methodDescriptor;
+    this.jsonMessageConverter = jsonMessageConverter;
+    this.dynamicMessage = dynamicMessage;
   }
 
   @Override
@@ -173,5 +191,21 @@ public class GrpcRequest implements Request {
   @Override
   public String getProtocol() {
     return "HTTP/2";
+  }
+
+  public Descriptors.ServiceDescriptor getServiceDescriptor() {
+    return serviceDescriptor;
+  }
+
+  public Descriptors.MethodDescriptor getMethodDescriptor() {
+    return methodDescriptor;
+  }
+
+  public DynamicMessage getDynamicMessage() {
+    return dynamicMessage;
+  }
+
+  public JsonMessageConverter getJsonMessageConverter() {
+    return jsonMessageConverter;
   }
 }
