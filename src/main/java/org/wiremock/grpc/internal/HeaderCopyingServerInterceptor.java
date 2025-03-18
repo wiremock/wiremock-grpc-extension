@@ -20,6 +20,8 @@ import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import io.grpc.*;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,13 +39,15 @@ public class HeaderCopyingServerInterceptor implements ServerInterceptor {
   }
 
   private static HttpHeaders buildHttpHeaders(Metadata metadata) {
-    final List<HttpHeader> httpHeaderList =
-        metadata.keys().stream()
-            .map(
-                key ->
-                    new HttpHeader(
-                        key, metadata.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER))))
-            .collect(Collectors.toList());
+    final List<HttpHeader> httpHeaderList = metadata.keys().stream().map(key -> {
+      if (key.endsWith("-bin")) {
+        // Use the binary marshaller for binary headers
+        return new HttpHeader(key, Arrays.toString(metadata.get(Metadata.Key.of(key, Metadata.BINARY_BYTE_MARSHALLER))));
+      } else {
+        // Use ASCII marshaller for normal headers
+        return new HttpHeader(key, metadata.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER)));
+      }
+    }).collect(Collectors.toList());
     return new HttpHeaders(httpHeaderList);
   }
 }
