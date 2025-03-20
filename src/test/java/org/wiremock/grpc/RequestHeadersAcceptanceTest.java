@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,13 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.grpc.*;
+import java.util.Arrays;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
-
-import java.util.Arrays;
 
 public class RequestHeadersAcceptanceTest {
 
@@ -92,14 +91,11 @@ public class RequestHeadersAcceptanceTest {
     channel = ClientInterceptors.intercept(managedChannel, new BinaryHeaderAdditionInterceptor());
     greetingsClient = new GreetingsClient(channel);
     wm.stubFor(
-            post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
-                    .withHeader(X_MY_HEADER_BINARY, equalTo(Arrays.toString("binary match me".getBytes())))
-                    .willReturn(
-                            okJson(
-                                    "{\n"
-                                            + "    \"greeting\": \"{{request.headers.x-my-Header-bin}}\"\n"
-                                            + "}")
-                                    .withTransformers("response-template")));
+        post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
+            .withHeader(X_MY_HEADER_BINARY, equalTo(Arrays.toString("binary match me".getBytes())))
+            .willReturn(
+                okJson("{\n" + "    \"greeting\": \"{{request.headers.x-my-Header-bin}}\"\n" + "}")
+                    .withTransformers("response-template")));
 
     String greeting = greetingsClient.greet("Whatever");
 
@@ -129,13 +125,13 @@ public class RequestHeadersAcceptanceTest {
   public static class BinaryHeaderAdditionInterceptor implements ClientInterceptor {
 
     static final Metadata.Key<byte[]> CUSTOM_HEADER_KEY =
-            Metadata.Key.of(X_MY_HEADER_BINARY, Metadata.BINARY_BYTE_MARSHALLER);
+        Metadata.Key.of(X_MY_HEADER_BINARY, Metadata.BINARY_BYTE_MARSHALLER);
 
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-            MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
       return new ForwardingClientCall.SimpleForwardingClientCall<>(
-              next.newCall(method, callOptions)) {
+          next.newCall(method, callOptions)) {
 
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Thomas Akehurst
+ * Copyright (C) 2024-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 package org.wiremock.grpc.internal;
 
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
+import static io.grpc.Metadata.BINARY_BYTE_MARSHALLER;
 
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import io.grpc.*;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,15 +39,23 @@ public class HeaderCopyingServerInterceptor implements ServerInterceptor {
   }
 
   private static HttpHeaders buildHttpHeaders(Metadata metadata) {
-    final List<HttpHeader> httpHeaderList = metadata.keys().stream().map(key -> {
-      if (key.endsWith("-bin")) {
-        // Use the binary marshaller for binary headers
-        return new HttpHeader(key, Arrays.toString(metadata.get(Metadata.Key.of(key, Metadata.BINARY_BYTE_MARSHALLER))));
-      } else {
-        // Use ASCII marshaller for normal headers
-        return new HttpHeader(key, metadata.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER)));
-      }
-    }).collect(Collectors.toList());
+    final List<HttpHeader> httpHeaderList =
+        metadata.keys().stream()
+            .map(
+                key -> {
+                  if (key.endsWith("-bin")) {
+                    // Use the binary marshaller for binary headers
+                    return new HttpHeader(
+                        key,
+                        Arrays.toString(
+                            metadata.get(Metadata.Key.of(key, BINARY_BYTE_MARSHALLER))));
+                  } else {
+                    // Use ASCII marshaller for normal headers
+                    return new HttpHeader(
+                        key, metadata.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER)));
+                  }
+                })
+            .collect(Collectors.toList());
     return new HttpHeaders(httpHeaderList);
   }
 }
