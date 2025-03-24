@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import com.example.grpc.GreetingServiceGrpc;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.grpc.*;
+import java.util.Arrays;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ import org.wiremock.grpc.dsl.WireMockGrpcService;
 public class RequestHeadersAcceptanceTest {
 
   public static final String X_MY_HEADER = "x-my-Header";
+  public static final String X_MY_HEADER_BINARY = "x-my-Header-bin";
   WireMockGrpcService mockGreetingService;
   ManagedChannel managedChannel;
   Channel channel;
@@ -58,8 +60,6 @@ public class RequestHeadersAcceptanceTest {
 
     managedChannel =
         ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build();
-    channel = ClientInterceptors.intercept(managedChannel, new HeaderAdditionInterceptor());
-    greetingsClient = new GreetingsClient(channel);
   }
 
   @AfterEach
@@ -69,6 +69,8 @@ public class RequestHeadersAcceptanceTest {
 
   @Test
   void arbitraryRequestHeaderCanBeUsedWhenMatchingAndTemplating() {
+    channel = ClientInterceptors.intercept(managedChannel, new HeaderAdditionInterceptor());
+    greetingsClient = new GreetingsClient(channel);
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
             .withHeader(X_MY_HEADER, equalTo("match me"))
@@ -82,6 +84,22 @@ public class RequestHeadersAcceptanceTest {
     String greeting = greetingsClient.greet("Whatever");
 
     assertThat(greeting, is("The header value was: match me"));
+  }
+
+  @Test
+  void binaryRequestHeaderCanBeUsed() {
+    channel = ClientInterceptors.intercept(managedChannel, new BinaryHeaderAdditionInterceptor());
+    greetingsClient = new GreetingsClient(channel);
+    wm.stubFor(
+        post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
+            .withHeader(X_MY_HEADER_BINARY, equalTo(Arrays.toString("binary match me".getBytes())))
+            .willReturn(
+                okJson("{\n" + "    \"greeting\": \"{{request.headers.x-my-Header-bin}}\"\n" + "}")
+                    .withTransformers("response-template")));
+
+    String greeting = greetingsClient.greet("Whatever");
+
+    assertThat(greeting, is(Arrays.toString("binary match me".getBytes())));
   }
 
   public static class HeaderAdditionInterceptor implements ClientInterceptor {
@@ -98,6 +116,26 @@ public class RequestHeadersAcceptanceTest {
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
           headers.put(CUSTOM_HEADER_KEY, "match me");
+          super.start(responseListener, headers);
+        }
+      };
+    }
+  }
+
+  public static class BinaryHeaderAdditionInterceptor implements ClientInterceptor {
+
+    static final Metadata.Key<byte[]> CUSTOM_HEADER_KEY =
+        Metadata.Key.of(X_MY_HEADER_BINARY, Metadata.BINARY_BYTE_MARSHALLER);
+
+    @Override
+    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+      return new ForwardingClientCall.SimpleForwardingClientCall<>(
+          next.newCall(method, callOptions)) {
+
+        @Override
+        public void start(Listener<RespT> responseListener, Metadata headers) {
+          headers.put(CUSTOM_HEADER_KEY, "binary match me".getBytes());
           super.start(responseListener, headers);
         }
       };
