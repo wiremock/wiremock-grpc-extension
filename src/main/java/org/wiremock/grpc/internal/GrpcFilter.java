@@ -26,7 +26,6 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.TypeRegistry;
 import io.grpc.*;
 import io.grpc.protobuf.ProtoServiceDescriptorSupplier;
-import io.grpc.protobuf.ProtoUtils;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import io.grpc.servlet.jakarta.ServletAdapter;
 import io.grpc.servlet.jakarta.ServletServerBuilder;
@@ -121,7 +120,7 @@ public class GrpcFilter extends HttpFilter {
                                   .map(
                                       methodDescriptor ->
                                           pair(
-                                              buildMessageDescriptorInstance(
+                                              GrpcUtils.buildMessageDescriptorInstance(
                                                   serviceDescriptor, methodDescriptor),
                                               buildHandler(
                                                   serviceDescriptor,
@@ -158,36 +157,6 @@ public class GrpcFilter extends HttpFilter {
         : ServerCalls.asyncUnaryCall(
             new UnaryServerCallHandler(
                 stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter));
-  }
-
-  private static MethodDescriptor<DynamicMessage, DynamicMessage> buildMessageDescriptorInstance(
-      Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor) {
-    return MethodDescriptor.<DynamicMessage, DynamicMessage>newBuilder()
-        .setType(getMethodTypeFromDesc(methodDescriptor))
-        .setFullMethodName(
-            MethodDescriptor.generateFullMethodName(
-                serviceDescriptor.getFullName(), methodDescriptor.getName()))
-        .setRequestMarshaller(
-            ProtoUtils.marshaller(
-                DynamicMessage.getDefaultInstance(methodDescriptor.getInputType())))
-        .setResponseMarshaller(
-            ProtoUtils.marshaller(
-                DynamicMessage.getDefaultInstance(methodDescriptor.getOutputType())))
-        .build();
-  }
-
-  private static MethodDescriptor.MethodType getMethodTypeFromDesc(
-      Descriptors.MethodDescriptor methodDesc) {
-    if (!methodDesc.isServerStreaming() && !methodDesc.isClientStreaming()) {
-      return MethodDescriptor.MethodType.UNARY;
-    } else if (methodDesc.isServerStreaming() && !methodDesc.isClientStreaming()) {
-      return MethodDescriptor.MethodType.SERVER_STREAMING;
-    } else if (!methodDesc.isServerStreaming()) {
-      return MethodDescriptor.MethodType.CLIENT_STREAMING;
-    } else {
-      return MethodDescriptor.MethodType.BIDI_STREAMING;
-    }
   }
 
   @Override
