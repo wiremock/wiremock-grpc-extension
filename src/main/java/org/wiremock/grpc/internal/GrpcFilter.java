@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import jakarta.servlet.http.HttpFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -53,19 +54,26 @@ public class GrpcFilter extends HttpFilter {
   }
 
   public void loadFileDescriptors(List<Descriptors.FileDescriptor> fileDescriptors) {
-    final List<BindableService> services = buildServices(fileDescriptors);
-    servletAdapter = loadServices(services);
+    loadFileDescriptors(fileDescriptors, Collections.emptyList());
   }
 
-  private static ServletAdapter loadServices(List<? extends BindableService> bindableServices) {
+  public void loadFileDescriptors(
+      List<Descriptors.FileDescriptor> fileDescriptors, List<ServerInterceptor> interceptors) {
+    final List<BindableService> services = buildServices(fileDescriptors);
+    servletAdapter = loadServices(services, interceptors);
+  }
+
+  private static ServletAdapter loadServices(
+      List<? extends BindableService> bindableServices, List<ServerInterceptor> interceptors) {
     final HeaderCopyingServerInterceptor headerCopyingServerInterceptor =
         new HeaderCopyingServerInterceptor();
     final ServletServerBuilder serverBuilder = new ServletServerBuilder();
     bindableServices.forEach(
-        service -> {
-          serverBuilder.addService(
-              ServerInterceptors.intercept(service, headerCopyingServerInterceptor));
-        });
+        service ->
+            serverBuilder.addService(
+                ServerInterceptors.intercept(
+                    ServerInterceptors.intercept(service, headerCopyingServerInterceptor),
+                    interceptors)));
     return serverBuilder.buildServletAdapter();
   }
 
