@@ -20,6 +20,7 @@ import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_RE
 
 import com.github.tomakehurst.wiremock.common.LocalNotifier;
 import com.github.tomakehurst.wiremock.common.Notifier;
+import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
@@ -29,6 +30,7 @@ import io.grpc.Status;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.atomic.AtomicReference;
+import org.eclipse.jetty.http.HttpStatus;
 import org.wiremock.grpc.dsl.WireMockGrpc;
 
 public class ClientStreamingServerCallHandler extends BaseCallHandler
@@ -43,7 +45,7 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
       JsonMessageConverter jsonMessageConverter,
       Notifier notifier) {
     super(stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter);
-      this.notifier = notifier;
+    this.notifier = notifier;
   }
 
   @Override
@@ -76,7 +78,24 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
             (req, resp, attributes) -> {
               final HttpHeader statusHeader = resp.getHeaders().getHeader(GRPC_STATUS_NAME);
 
-              if (!statusHeader.isPresent() && resp.getStatus() == 404) {
+              // 404 needs to be handled as a special case here because when using many requests,
+              // one reply not all the requests will match.  We handle the 404 as a special case
+              // in the onCompleted method
+              if (!statusHeader.isPresent() && resp.getStatus() == HttpStatus.NOT_FOUND_404) {
+                return;
+              }
+
+              if (!statusHeader.isPresent()
+                  && GrpcStatusUtils.errorHttpToGrpcStatusMappings.containsKey(resp.getStatus())) {
+                final Pair<Status, String> statusMapping =
+                    GrpcStatusUtils.errorHttpToGrpcStatusMappings.get(resp.getStatus());
+                final Status grpcStatus = statusMapping.a;
+                final WireMockGrpc.Status status =
+                    WireMockGrpc.Status.valueOf(grpcStatus.getCode().name());
+
+                responseStatus.set(status);
+                statusReason.set(statusMapping.b);
+
                 return;
               }
 
@@ -121,10 +140,12 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
                   .withDescription(statusReason.get())
                   .asRuntimeException());
         } else {
+          final Pair<Status, String> notFoundStatusMapping =
+              GrpcStatusUtils.errorHttpToGrpcStatusMappings.get(HttpStatus.NOT_FOUND_404);
+          final Status grpcStatus = notFoundStatusMapping.a;
+
           responseObserver.onError(
-              Status.NOT_FOUND
-                  .withDescription("No matching stub mapping found for gRPC request")
-                  .asRuntimeException());
+              grpcStatus.withDescription(notFoundStatusMapping.b).asRuntimeException());
         }
       }
     };

@@ -33,21 +33,41 @@ jobs:
       run: chmod +x gradlew
     
     - name: Cache Gradle packages
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.gradle/caches
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
         restore-keys: ${{ runner.os }}-gradle
 
     - name: Test
-      if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.jdk == 11 && github.event_name == 'push') }}
+      if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.jdk == 11 && github.event_name == 'push') && matrix.os != 'windows-latest' }}
       run: ./gradlew check --stacktrace --no-daemon
+
+    - name: Test-Windows
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: ./gradlew check --stacktrace --no-daemon -x spotlessCheck
 
     - name: Archive test report - ${{ matrix.os }} JDK ${{ matrix.jdk }}
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: wiremock-grpc-extension-test-report-${{ matrix.os }} JDK ${{ matrix.jdk }}
         path: |
           build/reports/tests/test
           build/test-results/test
+
+  gradle-scan:
+    name: Snyk gradle scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Snyk to check build.gradle for vulnerabilities
+        uses: snyk/actions/gradle-jdk11@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --severity-threshold=high --org=f310ee2f-5552-444d-84ee-ec8c44c33adb

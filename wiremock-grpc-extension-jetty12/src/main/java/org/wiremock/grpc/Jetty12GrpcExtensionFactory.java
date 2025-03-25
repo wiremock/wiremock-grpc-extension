@@ -18,19 +18,24 @@ package org.wiremock.grpc;
 import com.github.tomakehurst.wiremock.extension.Extension;
 import com.github.tomakehurst.wiremock.extension.ExtensionFactory;
 import com.github.tomakehurst.wiremock.extension.WireMockServices;
-import com.github.tomakehurst.wiremock.http.HttpServerFactoryLoader;
 import java.util.List;
-import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 
-public class GrpcExtensionFactory implements ExtensionFactory {
+import com.github.tomakehurst.wiremock.http.HttpServerFactoryLoader;
+import org.wiremock.annotations.Beta;
+import org.wiremock.grpc.internal.GrpcAdminApiExtension;
+import org.wiremock.grpc.internal.GrpcHttpServerFactory;
+import org.wiremock.grpc.internal.Jetty12GrpcHttpServerFactory;
+
+@Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
+public class Jetty12GrpcExtensionFactory implements ExtensionFactory {
 
   @Override
   public List<Extension> create(WireMockServices services) {
-    return List.of(new GrpcHttpServerFactory(services.getStores().getBlobStore("grpc")));
+      return List.of(new Jetty12GrpcHttpServerFactory(services.getStores().getBlobStore("grpc")));
   }
 
-  @Override
-  public boolean isLoadable() {
-    return HttpServerFactoryLoader.isJetty11();
-  }
+    @Override
+    public boolean isLoadable() {
+        return !HttpServerFactoryLoader.isJetty11();
+    }
 }

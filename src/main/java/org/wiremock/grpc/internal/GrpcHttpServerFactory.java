@@ -15,12 +15,11 @@
  */
 package org.wiremock.grpc.internal;
 
+import com.github.tomakehurst.wiremock.admin.Router;
 import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.github.tomakehurst.wiremock.core.Options;
-import com.github.tomakehurst.wiremock.http.AdminRequestHandler;
-import com.github.tomakehurst.wiremock.http.HttpServer;
-import com.github.tomakehurst.wiremock.http.HttpServerFactory;
-import com.github.tomakehurst.wiremock.http.StubRequestHandler;
+import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
+import com.github.tomakehurst.wiremock.http.*;
 import com.github.tomakehurst.wiremock.jetty11.Jetty11HttpServer;
 import com.github.tomakehurst.wiremock.store.BlobStore;
 import com.google.protobuf.DescriptorProtos;
@@ -33,11 +32,17 @@ import java.util.Optional;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
-public class GrpcHttpServerFactory implements HttpServerFactory {
+public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtension {
 
-  private final List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
+  private final BlobStore protoDescriptorStore;
+  protected GrpcFilter grpcFilter;
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
+    this.protoDescriptorStore = protoDescriptorStore;
+  }
+
+  public void loadFileDescriptors() {
+    List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
     protoDescriptorStore
         .getAllKeys()
         .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
@@ -62,6 +67,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
                                 fileDescriptorProto,
                                 fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
                                 true))));
+    grpcFilter.loadFileDescriptors(fileDescriptors);
   }
 
   @Override
@@ -79,10 +85,16 @@ public class GrpcHttpServerFactory implements HttpServerFactory {
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
 
-        final GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler, fileDescriptors, options.notifier());
+        grpcFilter = new GrpcFilter(stubRequestHandler, options.notifier());
+        loadFileDescriptors();
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
     };
+  }
+
+  @Override
+  public void contributeAdminApiRoutes(Router router) {
+    router.add(RequestMethod.POST, "/ext/grpc/reset", new GrpcResetAdminApiTask(this));
   }
 }

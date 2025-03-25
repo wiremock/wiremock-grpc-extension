@@ -9,6 +9,7 @@ buildscript {
 
 plugins {
   id 'java-library'
+  id 'java-test-fixtures'
   id 'signing'
   id 'maven-publish'
   id 'idea'
@@ -27,7 +28,16 @@ repositories {
 group 'org.wiremock'
 
 dependencies {
-  api project(":")
+  api project(":"), {
+    exclude group: 'org.eclipse.jetty'
+    exclude group: 'org.eclipse.jetty.http2'
+  }
+  api "org.wiremock:wiremock-jetty12:$versions.wiremock"
+
+  testImplementation(testFixtures(project(":")), {
+    exclude group: 'org.eclipse.jetty'
+    exclude group: 'org.eclipse.jetty.http2'
+  })
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -58,17 +68,15 @@ publishing {
   }
 
   publications {
-    standalone(MavenPublication) { publication ->
-      artifactId = "${jar.getArchiveBaseName().get()}"
-
-      artifact shadowJar
+    main(MavenPublication) { publication ->
+      from components.java
       artifact sourcesJar
       artifact javadocJar
       artifact testJar
 
       pom.packaging 'jar'
       pom.withXml {
-        asNode().appendNode('description', 'Mock gRPC services with WireMock standalone')
+        asNode().appendNode('description', 'Mock gRPC services with WireMock')
         asNode().children().last() + pomInfo
       }
     }
@@ -93,66 +101,21 @@ signing {
 }
 
 assemble.dependsOn clean, shadowJar
-
-signStandalonePublication.dependsOn shadowJar
-publishStandalonePublicationToMavenLocal.dependsOn signStandalonePublication
-publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandalonePublication
-publishStandalonePublicationToSonatypeRepository.dependsOn signStandalonePublication
+publishMainPublicationToMavenLocal.dependsOn jar
+publishMainPublicationToGitHubPackagesRepository.dependsOn jar
 
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
 
-tasks.findAll { it.name == 'jar' }.each { it.enabled = false }
 
-shadowJar {
-  archiveBaseName.set('wiremock-grpc-extension-standalone')
-  archiveClassifier = null
-
-  mergeServiceFiles()
-  relocate "io.grpc", 'wiremock.grpc.io.grpc'
-  relocate "io.perfmark", 'wiremock.grpc.io.perfmark'
-
-  relocate "org.mortbay", 'wiremock.org.mortbay'
-  relocate "org.eclipse", 'wiremock.org.eclipse'
-  relocate "org.codehaus", 'wiremock.org.codehaus'
-  relocate "com.google", 'wiremock.com.google'
-  relocate "com.google.thirdparty", 'wiremock.com.google.thirdparty'
-  relocate "com.fasterxml.jackson", 'wiremock.com.fasterxml.jackson'
-  relocate "org.apache", 'wiremock.org.apache'
-  relocate "org.xmlunit", 'wiremock.org.xmlunit'
-  relocate "org.hamcrest", 'wiremock.org.hamcrest'
-  relocate "org.skyscreamer", 'wiremock.org.skyscreamer'
-  relocate "org.json", 'wiremock.org.json'
-  relocate "net.minidev", 'wiremock.net.minidev'
-  relocate "com.jayway", 'wiremock.com.jayway'
-  relocate "org.objectweb", 'wiremock.org.objectweb'
-  relocate "org.custommonkey", "wiremock.org.custommonkey"
-  relocate "net.javacrumbs", "wiremock.net.javacrumbs"
-  relocate "net.sf", "wiremock.net.sf"
-  relocate "com.github.jknack", "wiremock.com.github.jknack"
-  relocate "org.antlr", "wiremock.org.antlr"
-  relocate "jakarta.servlet", "wiremock.jakarta.servlet"
-  relocate "org.checkerframework", "wiremock.org.checkerframework"
-  relocate "org.hamcrest", "wiremock.org.hamcrest"
-  relocate "org.slf4j", "wiremock.org.slf4j"
-  relocate "joptsimple", "wiremock.joptsimple"
-  exclude 'joptsimple/HelpFormatterMessages.properties'
-  relocate "org.yaml", "wiremock.org.yaml"
-  relocate "com.ethlo", "wiremock.com.ethlo"
-  relocate "com.networknt", "wiremock.com.networknt"
-
-  dependencies {
-    exclude(dependency('org.slf4j:slf4j-api'))
+test {
+  useJUnitPlatform()
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    exceptionFormat "full"
   }
-
-  exclude 'META-INF/maven/**'
-  exclude 'META-INF/versions/17/**'
-  exclude 'META-INF/versions/21/**'
-  exclude 'META-INF/versions/22/**'
-  exclude 'module-info.class'
-  exclude 'handlebars-*.js'
 }
 
 protobuf {

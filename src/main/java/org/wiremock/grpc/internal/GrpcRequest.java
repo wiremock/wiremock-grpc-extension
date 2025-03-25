@@ -82,32 +82,32 @@ public class GrpcRequest implements Request {
 
   @Override
   public String getHeader(String key) {
-    return null;
+    return header(key).firstValue();
   }
 
   @Override
   public HttpHeader header(String key) {
-    return HttpHeader.absent(key);
+    return getHeaders().getHeader(key);
   }
 
   @Override
   public ContentTypeHeader contentTypeHeader() {
-    return ContentTypeHeader.absent();
+    return getHeaders().getContentTypeHeader();
   }
 
   @Override
   public HttpHeaders getHeaders() {
-    return HttpHeaders.noHeaders();
+    return HeaderCopyingServerInterceptor.HTTP_HEADERS_CONTEXT_KEY.get();
   }
 
   @Override
   public boolean containsHeader(String key) {
-    return false;
+    return getHeader(key) != null;
   }
 
   @Override
   public Set<String> getAllHeaderKeys() {
-    return emptySet();
+    return getHeaders().keys();
   }
 
   @Override

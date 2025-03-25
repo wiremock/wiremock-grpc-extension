@@ -9,14 +9,15 @@ buildscript {
 
 plugins {
   id 'java-library'
+  id 'java-test-fixtures'
   id 'signing'
   id 'maven-publish'
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '6.25.0'
+  id 'com.diffplug.spotless' version '7.0.2'
   id "com.google.protobuf" version "0.9.4"
-  id 'io.github.gradle-nexus.publish-plugin' version "1.3.0"
+  id 'io.github.gradle-nexus.publish-plugin' version "2.0.0"
 }
 
 repositories {
@@ -27,16 +28,16 @@ repositories {
 group 'org.wiremock'
 
 allprojects {
-  version = "0.6.0"
+  version = "0.10.0"
 
   sourceCompatibility = 11
   targetCompatibility = 11
 
   ext {
     versions = [
-      wiremock: "3.2.0",
-      grpc    : "1.63.0",
-      protobuf: "4.26.1"
+      wiremock: "3.12.1",
+      grpc    : "1.71.0",
+      protobuf: "3.25.6"
     ]
 
     repoUser = this.hasProperty('sonatypeUser') ? sonatypeUser : 'default'
@@ -96,6 +97,7 @@ dependencies {
 
   api platform("io.grpc:grpc-bom:$versions.grpc")
   api "io.grpc:grpc-protobuf"
+  api "io.grpc:grpc-services"
   api "io.grpc:grpc-stub"
 
   implementation "io.grpc:grpc-servlet-jakarta"
@@ -103,14 +105,21 @@ dependencies {
 
   implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
-  //  testImplementation project(":")
-  testImplementation(platform('org.junit:junit-bom:5.10.2'))
-  testImplementation "org.junit.jupiter:junit-jupiter"
-  testImplementation "org.hamcrest:hamcrest-core:2.2"
-  testImplementation "org.hamcrest:hamcrest-library:2.2"
-  testImplementation 'org.awaitility:awaitility:4.2.1'
+  testFixturesApi(platform('org.junit:junit-bom:5.12.1'))
+  testFixturesApi "org.junit.jupiter:junit-jupiter"
+  testFixturesApi "org.junit.platform:junit-platform-launcher"
+  testFixturesApi "org.hamcrest:hamcrest-core:3.0"
+  testFixturesApi "org.hamcrest:hamcrest-library:3.0"
+  testFixturesApi 'org.awaitility:awaitility:4.3.0'
 
-  testImplementation "io.grpc:grpc-okhttp"
+  testFixturesApi "io.grpc:grpc-okhttp"
+
+  testFixturesApi 'javax.annotation:javax.annotation-api:1.3.2'
+
+  testImplementation(testFixtures(project(":")), {
+    exclude group: 'org.eclipse.jetty'
+    exclude group: 'org.eclipse.jetty.http2'
+  })
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -197,9 +206,21 @@ task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
 
+sourceSets {
+  bookings
+  test {
+    compileClasspath += bookings.output
+    runtimeClasspath += bookings.output
+  }
+}
+
+configurations {
+  bookingsImplementation.extendsFrom testImplementation
+}
+
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:4.26.1"
+    artifact = "com.google.protobuf:protoc:$versions.protobuf"
   }
 
   plugins {
@@ -216,14 +237,21 @@ protobuf {
 
     all().each { task ->
       task.generateDescriptorSet = true
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/services.dsc"
       task.descriptorSetOptions.includeImports = true
+    }
+    ofSourceSet('testFixtures').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/testFixtures/resources/wiremock/grpc/greetings.dsc"
+    }
+    ofSourceSet('bookings').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
     }
   }
 }
 
 processTestResources.dependsOn generateProto
 processTestResources.dependsOn generateTestProto
+processTestResources.dependsOn generateBookingsProto
+processTestFixturesResources.dependsOn generateTestFixturesProto
 
 nexusPublishing {
   // See https://github.com/wiremock/community/blob/main/infra/maven-central.md
@@ -237,4 +265,46 @@ nexusPublishing {
       }
     }
   }
+}
+
+task 'set-snapshot-version' {
+  doLast {
+    def currentVersion = project.version
+    def nextVersion = "${majorVersion}.${minorVersion + 1}.0-SNAPSHOT"
+
+    updateFiles(currentVersion, nextVersion)
+  }
+}
+
+void updateFiles(String currentVersion, String nextVersion) {
+
+  def filesWithVersion = [
+    'build.gradle': {
+      "version = \"${it}"
+    }
+  ]
+
+  filesWithVersion.each { fileName, lineWithVersionTemplates ->
+    def file = file(fileName)
+    def lineWithVersionTemplateList = [lineWithVersionTemplates].flatten()
+
+    lineWithVersionTemplateList.each { lineWithVersionTemplate ->
+      def oldLine = lineWithVersionTemplate.call(currentVersion)
+      def newLine = lineWithVersionTemplate.call(nextVersion)
+      println "Replacing '${oldLine}' with '${newLine}' in ${fileName}"
+      file.text = file.text.replace(oldLine, newLine)
+    }
+  }
+}
+
+int getMajorVersion() {
+  Integer.valueOf(project.version.substring(0, project.version.indexOf('.')))
+}
+
+int getMinorVersion() {
+  Integer.valueOf(project.version.substring(project.version.indexOf('.') + 1, project.version.lastIndexOf('.')))
+}
+
+int getPatchVersion() {
+  Integer.valueOf(project.version.substring(project.version.lastIndexOf('.') + 1))
 }
