@@ -46,7 +46,7 @@ public class Jetty12GrpcHttpServerFactory extends GrpcHttpServerFactory {
     return new Jetty12HttpServer(options, adminRequestHandler, stubRequestHandler) {
       @Override
       protected void decorateMockServiceContextBeforeConfig(ServletContextHandler mockServiceContext) {
-        grpcFilter = new GrpcFilter(stubRequestHandler);
+        grpcFilter = new GrpcFilter(stubRequestHandler, options.notifier());
         loadFileDescriptors();
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
