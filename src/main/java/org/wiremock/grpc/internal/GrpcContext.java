@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025 Thomas Akehurst
+ * Copyright (C) 2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,25 +15,39 @@
  */
 package org.wiremock.grpc.internal;
 
-import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
 
-public abstract class BaseCallHandler {
-  public static final ThreadLocal<GrpcContext> CONTEXT = new ThreadLocal<>();
-  protected final StubRequestHandler stubRequestHandler;
-  protected final Descriptors.ServiceDescriptor serviceDescriptor;
-  protected final Descriptors.MethodDescriptor methodDescriptor;
+public class GrpcContext {
+  private final Descriptors.ServiceDescriptor serviceDescriptor;
+  private final Descriptors.MethodDescriptor methodDescriptor;
+  private final JsonMessageConverter jsonMessageConverter;
+  private final DynamicMessage dm;
 
-  protected final JsonMessageConverter jsonMessageConverter;
-
-  protected BaseCallHandler(
-      StubRequestHandler stubRequestHandler,
+  public GrpcContext(
       Descriptors.ServiceDescriptor serviceDescriptor,
       Descriptors.MethodDescriptor methodDescriptor,
-      JsonMessageConverter jsonMessageConverter) {
-    this.stubRequestHandler = stubRequestHandler;
+      JsonMessageConverter jsonMessageConverter,
+      DynamicMessage dm) {
     this.serviceDescriptor = serviceDescriptor;
     this.methodDescriptor = methodDescriptor;
     this.jsonMessageConverter = jsonMessageConverter;
+    this.dm = dm;
+  }
+
+  public Descriptors.ServiceDescriptor getServiceDescriptor() {
+    return serviceDescriptor;
+  }
+
+  public Descriptors.MethodDescriptor getMethodDescriptor() {
+    return methodDescriptor;
+  }
+
+  public JsonMessageConverter getJsonMessageConverter() {
+    return jsonMessageConverter;
+  }
+
+  public DynamicMessage getDm() {
+    return dm;
   }
 }
