@@ -15,7 +15,7 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '7.0.2'
+  id 'com.diffplug.spotless' version '7.0.3'
   id "com.google.protobuf" version "0.9.5"
   id 'io.github.gradle-nexus.publish-plugin' version "2.0.0"
 }
