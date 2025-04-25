@@ -85,7 +85,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtensi
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
 
-        grpcFilter = new GrpcFilter(stubRequestHandler);
+        grpcFilter = new GrpcFilter(stubRequestHandler, options.notifier());
         loadFileDescriptors();
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
