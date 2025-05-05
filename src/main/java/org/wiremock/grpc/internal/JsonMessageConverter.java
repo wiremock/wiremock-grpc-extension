@@ -32,7 +32,12 @@ public class JsonMessageConverter {
   }
 
   public String toJson(MessageOrBuilder message) {
-    return Exceptions.uncheck(() -> jsonPrinter.print(message), String.class);
+    if ("true".equals(System.getenv("GRPC_JSON_PRINTER_INCLUDE_ALL_DEFAULT_VALUE_FIELDS"))) {
+      return Exceptions.uncheck(
+          () -> jsonPrinter.includingDefaultValueFields().print(message), String.class);
+    } else {
+      return Exceptions.uncheck(() -> jsonPrinter.print(message), String.class);
+    }
   }
 
   @SuppressWarnings("unchecked")
