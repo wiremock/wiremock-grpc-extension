@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025 Thomas Akehurst
+ * Copyright (C) 2023-2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,9 +44,6 @@ public class UnaryServerCallHandler extends BaseCallHandler
   @Override
   public void invoke(DynamicMessage request, StreamObserver<DynamicMessage> responseObserver) {
     final GrpcFilter.ServerAddress serverAddress = GrpcFilter.ServerAddress.get();
-
-    CONTEXT.set(
-        new GrpcContext(serviceDescriptor, methodDescriptor, jsonMessageConverter, request));
 
     final GrpcRequest wireMockRequest =
         new GrpcRequest(

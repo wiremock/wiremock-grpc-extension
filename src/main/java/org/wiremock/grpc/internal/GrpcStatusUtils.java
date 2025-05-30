@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 Thomas Akehurst
+ * Copyright (C) 2024 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,12 +42,4 @@ public class GrpcStatusUtils {
           new Pair<>(Status.UNAVAILABLE, "Service Unavailable"),
           504,
           new Pair<>(Status.UNAVAILABLE, "Gateway Timeout"));
-
-  public static final Map<Status, Integer> reverseMappings =
-      Map.of(
-          Status.INTERNAL, 400,
-          Status.UNAUTHENTICATED, 401,
-          Status.PERMISSION_DENIED, 403,
-          Status.UNIMPLEMENTED, 404,
-          Status.UNAVAILABLE, 504);
 }

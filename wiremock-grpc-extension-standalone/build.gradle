@@ -153,7 +153,6 @@ shadowJar {
   exclude 'META-INF/versions/22/**'
   exclude 'module-info.class'
   exclude 'handlebars-*.js'
-  mergeServiceFiles()
 }
 
 protobuf {
