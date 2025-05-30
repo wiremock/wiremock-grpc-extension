@@ -45,7 +45,6 @@ public class GrpcProxyTest {
   WireMock wireMockProxy;
   ManagedChannel channel;
   GreetingsClient greetingsClient;
-  GreetingsClient greetingsStubClient;
 
   @RegisterExtension
   public static WireMockExtension wm =
@@ -74,10 +73,6 @@ public class GrpcProxyTest {
     channel =
         ManagedChannelBuilder.forAddress("localhost", wmProxy.getPort()).usePlaintext().build();
     greetingsClient = new GreetingsClient(channel);
-    // Create greetings client for backend service verification
-    greetingsStubClient =
-        new GreetingsClient(
-            ManagedChannelBuilder.forAddress("localhost", wm.getPort()).usePlaintext().build());
   }
 
   @AfterEach
@@ -95,9 +90,6 @@ public class GrpcProxyTest {
                             + "    \"greeting\": \"Hello {{jsonPath request.body '$.name'}}\"\n"
                             + "}")
                     .withTransformers("response-template")));
-    // Before recording, verify the backend service is replying correctly
-    String stubGreet = greetingsStubClient.greet("Tom");
-    assertThat("Hello Tom", is(stubGreet));
 
     wmProxy.startRecording("http://localhost:" + wm.getPort());
     String greet = greetingsClient.greet("Tom");
@@ -117,5 +109,9 @@ public class GrpcProxyTest {
     assertThat(grpcResp.getStatus(), is(200));
     assertThat(grpcResp.getJsonBody().toString(), is("{\"greeting\":\"Hello Tom\"}"));
     assertThat(grpcResp.getHeaders().getHeader("grpc-status-name").firstValue(), is("OK"));
+
+    // after recording is done, let's call the proxy server again to verify the recording works
+    String greetAfterRecording = greetingsClient.greet("Tom");
+    assertThat("Hello Tom", is(greetAfterRecording));
   }
 }
