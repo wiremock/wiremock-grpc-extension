@@ -15,29 +15,24 @@
  */
 package org.wiremock.grpc.internal;
 
-import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
-import com.github.tomakehurst.wiremock.common.Encoding;
 import com.github.tomakehurst.wiremock.common.FileSource;
 import com.github.tomakehurst.wiremock.extension.Parameters;
 import com.github.tomakehurst.wiremock.extension.StubMappingTransformer;
-import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.matching.*;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class GrpcStubMappingTransformer extends StubMappingTransformer {
   @Override
   public StubMapping transform(StubMapping stubMapping, FileSource files, Parameters parameters) {
     ResponseDefinition resp = stubMapping.getResponse();
     if (resp.getHeaders() != null
-        && resp.getHeaders().getContentTypeHeader() != null
-        && resp.getHeaders().getContentTypeHeader().getValues().contains("application/grpc")) {
-      // when response is grpc, we need to convert the response body to json
-      ResponseDefinition jsonResp = convertBinaryToJson(resp);
-      stubMapping.setResponse(jsonResp);
-
-      // when response is grpc, we need to convert the request body to json as well
+        && resp.getHeaders().getHeader(GrpcUtils.GRPC_STATUS_NAME) != null) {
+      // when response is grpc, we need to convert the request body to json as well, the reason that
+      // we cannot use request content type is because it is not set in the request pattern
       RequestPattern req = stubMapping.getRequest();
       RequestPattern jsonReq = convertBinaryToJson(req);
       stubMapping.setRequest(jsonReq);
@@ -45,66 +40,22 @@ public class GrpcStubMappingTransformer extends StubMappingTransformer {
     return stubMapping;
   }
 
-  private ResponseDefinition convertBinaryToJson(ResponseDefinition resp) {
-    String base64Body = resp.getBase64Body();
-    if (base64Body != null) {
-      byte[] rawBytes = Encoding.decodeBase64(base64Body);
-      return ResponseDefinitionBuilder.like(resp)
-          .but()
-          .withBase64Body(null)
-          .withJsonBody(Body.fromJsonBytes(rawBytes).asJson())
-          .build();
-    } else {
-      return resp;
-    }
-  }
-
   private RequestPattern convertBinaryToJson(RequestPattern req) {
-    RequestPatternBuilder reqBuilder =
-        RequestPatternBuilder.newRequestPattern(req.getMethod(), req.getUrlMatcher())
-            .withScheme(req.getScheme())
-            .withHost(req.getHost());
-    if (req.getPort() != null) {
-      reqBuilder.withPort(req.getPort());
-    }
-    if (req.getHeaders() != null) {
-      req.getHeaders().forEach(reqBuilder::withHeader);
-    }
-    if (req.getPathParameters() != null) {
-      req.getPathParameters().forEach(reqBuilder::withPathParam);
-    }
-    if (req.getQueryParameters() != null) {
-      req.getQueryParameters().forEach(reqBuilder::withQueryParam);
-    }
-    if (req.getFormParameters() != null) {
-      req.getFormParameters().forEach(reqBuilder::withFormParam);
-    }
-    if (req.getCookies() != null) {
-      req.getCookies().forEach(reqBuilder::withCookie);
-    }
-    if (req.getBodyPatterns() != null) {
-      req.getBodyPatterns()
-          .forEach(
-              body -> {
-                if (body instanceof BinaryEqualToPattern) {
-                  BinaryEqualToPattern binaryPattern = (BinaryEqualToPattern) body;
-                  byte[] bytes = binaryPattern.getValue();
-                  reqBuilder.withRequestBody(
-                      new EqualToJsonPattern(
-                          new String(bytes, StandardCharsets.UTF_8), true, false));
-                } else {
-                  reqBuilder.withRequestBody(body);
-                }
-              });
-    }
-    if (req.hasInlineCustomMatcher()) {
-      reqBuilder.andMatching(req.getMatcher());
-    }
-    if (req.getMultipartPatterns() != null) {
-      req.getMultipartPatterns().forEach(reqBuilder::withRequestBodyPart);
-    }
-    reqBuilder.withBasicAuth(req.getBasicAuthCredentials());
-    reqBuilder.andMatching(req.getCustomMatcher());
+    RequestPatternBuilder reqBuilder = RequestPatternBuilder.like(req).but();
+    List<EqualToJsonPattern> convertedPatterns =
+        req.getBodyPatterns().stream()
+            .filter(body -> body instanceof BinaryEqualToPattern)
+            .map(
+                binaryBody -> {
+                  byte[] bytes = ((BinaryEqualToPattern) binaryBody).getValue();
+                  return new EqualToJsonPattern(
+                      new String(bytes, StandardCharsets.UTF_8), true, false);
+                })
+            .collect(Collectors.toList());
+
+    // Add the converted patterns to the request builder, separate this from the stream to avoid
+    // concurrent modification exception
+    convertedPatterns.forEach(reqBuilder::withRequestBody);
     return reqBuilder.build();
   }
 

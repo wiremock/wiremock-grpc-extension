@@ -23,12 +23,18 @@ import static org.hamcrest.Matchers.is;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.github.tomakehurst.wiremock.matching.ContentPattern;
+import com.github.tomakehurst.wiremock.matching.EqualToJsonPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.recording.SnapshotRecordResult;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,13 +52,28 @@ public class GrpcProxyTest {
   ManagedChannel channel;
   GreetingsClient greetingsClient;
 
+  static File createTempRootFolder() {
+    try {
+      File sourceRootDir = new File("src/test/resources/wiremock/");
+      File proxyRootDir = Files.createTempDirectory("wiremock").toFile();
+      FileUtils.copyDirectory(sourceRootDir, proxyRootDir);
+      return proxyRootDir;
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create temporary root folder for WireMock proxy", e);
+    }
+  }
+
+  // This is a shared root directory for both wireMock and wireMockProxy, cannot use the @TempDir as
+  // it is not initialized before the extension registration
+  static File proxyRootDir = createTempRootFolder();
+
   @RegisterExtension
   public static WireMockExtension wm =
       WireMockExtension.newInstance()
           .options(
               wireMockConfig()
                   .dynamicPort()
-                  .withRootDirectory("src/test/resources/wiremock")
+                  .withRootDirectory(proxyRootDir.getAbsolutePath())
                   .extensions(new GrpcExtensionFactory()))
           .build();
 
@@ -62,7 +83,7 @@ public class GrpcProxyTest {
           .options(
               wireMockConfig()
                   .dynamicPort()
-                  .withRootDirectory("src/test/resources/wiremock_proxy")
+                  .withRootDirectory(proxyRootDir.getAbsolutePath())
                   .extensions(new GrpcExtensionFactory()))
           .build();
 
@@ -102,12 +123,16 @@ public class GrpcProxyTest {
     RequestPattern grpcReq = grpcMapping.getRequest();
     assertThat(grpcReq.getUrl(), is("/com.example.grpc.GreetingService/greeting"));
     assertThat(grpcReq.getMethod().getName(), is("POST"));
-    assertThat(
-        (String) grpcReq.getBodyPatterns().get(0).getValue(), is("{\n  \"name\": \"Tom\"\n}"));
+    for (ContentPattern<?> reqBody : grpcReq.getBodyPatterns()) {
+      if (reqBody instanceof EqualToJsonPattern) {
+        EqualToJsonPattern jsonPattern = (EqualToJsonPattern) reqBody;
+        assertThat(jsonPattern.getEqualToJson(), is("{\n  \"name\": \"Tom\"\n}"));
+      }
+    }
 
     ResponseDefinition grpcResp = grpcMapping.getResponse();
     assertThat(grpcResp.getStatus(), is(200));
-    assertThat(grpcResp.getJsonBody().toString(), is("{\"greeting\":\"Hello Tom\"}"));
+    assertThat(grpcResp.getBody(), is("{\n  \"greeting\": \"Hello Tom\"\n}"));
     assertThat(grpcResp.getHeaders().getHeader("grpc-status-name").firstValue(), is("OK"));
 
     // after recording is done, let's call the proxy server again to verify the recording works

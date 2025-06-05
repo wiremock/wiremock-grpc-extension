@@ -59,7 +59,7 @@ public class GrpcClient implements HttpClient {
             .usePlaintext()
             .build();
     List<HttpHeader> headers = new ArrayList<>();
-    headers.add(new HttpHeader("Content-Type", request.getHeader("Content-Type")));
+    headers.add(new HttpHeader("Content-Type", "application/json"));
     Response.Builder grpcRespBuilder = response();
     String statusName = Status.Code.OK.name();
     String statusReason = null;
