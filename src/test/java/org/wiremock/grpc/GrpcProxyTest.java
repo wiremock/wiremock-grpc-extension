@@ -57,6 +57,7 @@ public class GrpcProxyTest {
       File sourceRootDir = new File("src/test/resources/wiremock/");
       File proxyRootDir = Files.createTempDirectory("wiremock").toFile();
       FileUtils.copyDirectory(sourceRootDir, proxyRootDir);
+      proxyRootDir.deleteOnExit();
       return proxyRootDir;
     } catch (IOException e) {
       throw new RuntimeException("Failed to create temporary root folder for WireMock proxy", e);
