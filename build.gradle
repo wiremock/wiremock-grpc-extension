@@ -121,6 +121,10 @@ dependencies {
     exclude group: 'org.eclipse.jetty'
     exclude group: 'org.eclipse.jetty.http2'
   })
+
+  constraints {
+    implementation "io.netty:netty-codec-http2:4.2.0.RC3"
+  }
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
