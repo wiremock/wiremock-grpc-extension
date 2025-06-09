@@ -123,7 +123,7 @@ dependencies {
   })
 
   constraints {
-    implementation "io.netty:netty-codec-http2:4.2.0.RC3"
+    implementation "io.netty:netty-codec-http2:5.0.0.Alpha2"
   }
 }
 
