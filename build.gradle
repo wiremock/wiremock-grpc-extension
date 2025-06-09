@@ -106,7 +106,7 @@ dependencies {
 
   implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
-  testFixturesApi(platform('org.junit:junit-bom:5.13.0'))
+  testFixturesApi(platform('org.junit:junit-bom:5.13.1'))
   testFixturesApi "org.junit.jupiter:junit-jupiter"
   testFixturesApi "org.junit.platform:junit-platform-launcher"
   testFixturesApi "org.hamcrest:hamcrest-core:3.0"
