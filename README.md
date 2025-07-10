@@ -14,7 +14,7 @@ which enables your team to collaboratively create and host mock gRPC APIs. If yo
 
 ---
 
-<img src="https://wiremock.org/images/solutions/grpc/intro_schema.png" alt="WireMock and gRPC schema" style="width: 50%; height: auto; margin-top: 1em;"/>
+<img src="https://wiremock.org/images/solutions/grpc/intro_schema.png" alt="WireMock and gRPC schema" style="width: 70%; height: auto; margin-top: 1em;"/>
 
 
 
