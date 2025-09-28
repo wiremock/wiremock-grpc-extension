@@ -23,12 +23,17 @@ import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import io.grpc.Status;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import org.wiremock.grpc.dsl.WireMockGrpc;
+
+import java.io.StringReader;
 
 public class UnaryServerCallHandler extends BaseCallHandler
     implements ServerCalls.UnaryMethod<DynamicMessage, DynamicMessage> {
@@ -88,12 +93,32 @@ public class UnaryServerCallHandler extends BaseCallHandler
             return;
           }
 
-          DynamicMessage.Builder messageBuilder =
-              DynamicMessage.newBuilder(methodDescriptor.getOutputType());
+          String bodyString = resp.getBodyAsString();
+          boolean renderedAsArray = false;
+          if (methodDescriptor.isServerStreaming()) {
+            JsonReader reader = new JsonReader(new StringReader(bodyString));
+            reader.setLenient(true);
+            JsonElement jsonElement = JsonParser.parseReader(reader);
+            if (jsonElement.isJsonArray()) {
+              jsonElement.getAsJsonArray().forEach(element -> {
+                final DynamicMessage.Builder messageBuilder =
+                    DynamicMessage.newBuilder(methodDescriptor.getOutputType());
+                final DynamicMessage response =
+                    jsonMessageConverter.toMessage(element.toString(), messageBuilder);
+                responseObserver.onNext(response);
+              });
+              renderedAsArray = true;
+            }
+          }
 
-          final DynamicMessage response =
-              jsonMessageConverter.toMessage(resp.getBodyAsString(), messageBuilder);
-          responseObserver.onNext(response);
+          if (!renderedAsArray) {
+            DynamicMessage.Builder messageBuilder =
+                DynamicMessage.newBuilder(methodDescriptor.getOutputType());
+            final DynamicMessage response =
+                jsonMessageConverter.toMessage(bodyString, messageBuilder);
+            responseObserver.onNext(response);
+          }
+
           responseObserver.onCompleted();
         },
         ServeEvent.of(wireMockRequest));
