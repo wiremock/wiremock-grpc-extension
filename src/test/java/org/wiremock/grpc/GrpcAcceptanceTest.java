@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 package org.wiremock.grpc;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.including;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -34,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.wiremock.grpc.dsl.WireMockGrpc.Status;
+import static org.wiremock.grpc.dsl.WireMockGrpc.Status.UNIMPLEMENTED;
 import static org.wiremock.grpc.dsl.WireMockGrpc.equalToMessage;
 import static org.wiremock.grpc.dsl.WireMockGrpc.json;
 import static org.wiremock.grpc.dsl.WireMockGrpc.jsonTemplate;
@@ -50,6 +53,8 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.base.Stopwatch;
 import com.google.protobuf.Empty;
+import io.grpc.Channel;
+import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -71,6 +76,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.wiremock.grpc.RequestHeadersAcceptanceTest.HeaderAdditionInterceptor;
 import org.wiremock.grpc.client.AnotherGreetingsClient;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
@@ -528,5 +534,72 @@ public class GrpcAcceptanceTest {
     List<ServiceResponse> serviceList =
         serverReflectionResponses.get(0).getListServicesResponse().getServiceList();
     assertThat(serviceList.size(), is(4));
+  }
+
+  @Test
+  void supportsGrpcHeaderMatchingWithStringValueMatchingHeader() {
+    String headerName = "My-Fancy-Header";
+    String headerValue = "My-Fancy-Value";
+
+    Channel interceptedChannel =
+        ClientInterceptors.intercept(
+            channel, new HeaderAdditionInterceptor(headerName, headerValue));
+
+    GreetingsClient interceptedGreetingsClient = new GreetingsClient(interceptedChannel);
+
+    // Create a new stub
+    mockGreetingService.stubFor(
+        method("greeting")
+            .withHeader(headerName, equalTo(headerValue))
+            .willReturn(message(HelloResponse.newBuilder().setGreeting("matched header"))));
+
+    // Ensure the request was matched
+    assertThat(interceptedGreetingsClient.greet("Whatever"), is("matched header"));
+  }
+
+  @Test
+  void supportsGrpcHeaderMatchingWithMultiValueMatchingHeader() {
+    String headerName = "My-Fancy-Header";
+    String headerValue = "My-Fancy-Value";
+
+    Channel interceptedChannel =
+        ClientInterceptors.intercept(
+            channel, new HeaderAdditionInterceptor(headerName, headerValue));
+
+    GreetingsClient interceptedGreetingsClient = new GreetingsClient(interceptedChannel);
+
+    // Create a new stub
+    mockGreetingService.stubFor(
+        method("greeting")
+            .withHeader(headerName, including(headerValue))
+            .willReturn(message(HelloResponse.newBuilder().setGreeting("matched header"))));
+
+    // Ensure the request was matched
+    assertThat(interceptedGreetingsClient.greet("Whatever"), is("matched header"));
+  }
+
+  @Test
+  void supportsGrpcHeaderMatchingWithMismatchingHeader() {
+    String headerName = "My-Fancy-Header";
+    String headerValue = "My-Fancy-Value";
+
+    Channel interceptedChannel =
+        ClientInterceptors.intercept(
+            channel, new HeaderAdditionInterceptor(headerName, headerValue));
+
+    GreetingsClient interceptedGreetingsClient = new GreetingsClient(interceptedChannel);
+
+    // Create a new stub
+    mockGreetingService.stubFor(
+        method("greeting")
+            .withHeader(headerName, equalTo("it-will-never-match-this-header-value"))
+            .willReturn(
+                message(HelloResponse.newBuilder().setGreeting("this should not have matched"))));
+
+    // It should throw exception as the request should not match the setup:
+    Exception exception =
+        assertThrows(
+            StatusRuntimeException.class, () -> interceptedGreetingsClient.greet("Whatever"));
+    assertThat(exception.getMessage(), startsWith(UNIMPLEMENTED.toString()));
   }
 }
