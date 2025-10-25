@@ -18,9 +18,11 @@ package org.wiremock.grpc.internal;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_NAME;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_REASON;
 import static org.wiremock.grpc.internal.Delays.delayIfRequired;
+import static org.wiremock.grpc.internal.HeaderCopyingServerInterceptor.HTTP_TRAILERS_CONTEXT_KEY;
 
 import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.google.protobuf.Descriptors;
@@ -60,7 +62,10 @@ public class UnaryServerCallHandler extends BaseCallHandler
     stubRequestHandler.handle(
         wireMockRequest,
         (req, resp, attributes) -> {
-          final HttpHeader statusHeader = resp.getHeaders().getHeader(GRPC_STATUS_NAME);
+          HttpHeaders respHeaders = resp.getHeaders();
+          HTTP_TRAILERS_CONTEXT_KEY.get().set(respHeaders);
+
+          final HttpHeader statusHeader = respHeaders.getHeader(GRPC_STATUS_NAME);
 
           delayIfRequired(resp);
 
@@ -75,7 +80,7 @@ public class UnaryServerCallHandler extends BaseCallHandler
 
           if (statusHeader.isPresent()
               && !statusHeader.firstValue().equals(Status.Code.OK.name())) {
-            final HttpHeader statusReasonHeader = resp.getHeaders().getHeader(GRPC_STATUS_REASON);
+            final HttpHeader statusReasonHeader = respHeaders.getHeader(GRPC_STATUS_REASON);
             final String reason =
                 statusReasonHeader.isPresent() ? statusReasonHeader.firstValue() : "";
 

@@ -20,9 +20,17 @@ import static io.grpc.Metadata.BINARY_BYTE_MARSHALLER;
 
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.HttpHeaders;
-import io.grpc.*;
+import io.grpc.Context;
+import io.grpc.Contexts;
+import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
+import io.grpc.Status;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class HeaderCopyingServerInterceptor implements ServerInterceptor {
@@ -30,15 +38,23 @@ public class HeaderCopyingServerInterceptor implements ServerInterceptor {
   public static final Context.Key<HttpHeaders> HTTP_HEADERS_CONTEXT_KEY =
       Context.key("HTTP_HEADERS_CONTEXT_KEY");
 
+  public static final Context.Key<AtomicReference<HttpHeaders>> HTTP_TRAILERS_CONTEXT_KEY =
+      Context.key("HTTP_TRAILERS_CONTEXT_KEY");
+
   @Override
   public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
       ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    final HttpHeaders httpHeaders = buildHttpHeaders(headers);
-    Context newContext = Context.current().withValue(HTTP_HEADERS_CONTEXT_KEY, httpHeaders);
-    return Contexts.interceptCall(newContext, call, headers, next);
+    final HttpHeaders httpHeaders = toHttpHeaders(headers);
+    Context newContext =
+        Context.current()
+            .withValue(HTTP_HEADERS_CONTEXT_KEY, httpHeaders)
+            .withValue(HTTP_TRAILERS_CONTEXT_KEY, new AtomicReference<>());
+    ServerCall<ReqT, RespT> responseHeadersToTrailers =
+        new HttpResponseHeadersToGrpcTrailersForwardingServerCall<>(call);
+    return Contexts.interceptCall(newContext, responseHeadersToTrailers, headers, next);
   }
 
-  private static HttpHeaders buildHttpHeaders(Metadata metadata) {
+  private static HttpHeaders toHttpHeaders(Metadata metadata) {
     final List<HttpHeader> httpHeaderList =
         metadata.keys().stream()
             .map(
@@ -57,5 +73,38 @@ public class HeaderCopyingServerInterceptor implements ServerInterceptor {
                 })
             .collect(Collectors.toList());
     return new HttpHeaders(httpHeaderList);
+  }
+
+  private static Metadata fromHttpHeaders(HttpHeaders httpHeaders) {
+    Metadata metadata = new Metadata();
+    httpHeaders
+        .all()
+        .forEach(
+            responseHttpHeader ->
+                responseHttpHeader
+                    .values()
+                    .forEach(
+                        v ->
+                            metadata.put(
+                                Metadata.Key.of(responseHttpHeader.key(), ASCII_STRING_MARSHALLER),
+                                v)));
+    return metadata;
+  }
+
+  private static class HttpResponseHeadersToGrpcTrailersForwardingServerCall<ReqT, RespT>
+      extends SimpleForwardingServerCall<ReqT, RespT> {
+
+    public HttpResponseHeadersToGrpcTrailersForwardingServerCall(ServerCall<ReqT, RespT> call) {
+      super(call);
+    }
+
+    @Override
+    public void close(Status status, Metadata trailers) {
+      HttpHeaders responseHttpHeaders = HTTP_TRAILERS_CONTEXT_KEY.get().get();
+      if (responseHttpHeaders != null) {
+        trailers.merge(fromHttpHeaders(responseHttpHeaders));
+      }
+      super.close(status, trailers);
+    }
   }
 }
