@@ -15,8 +15,8 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '7.0.2'
-  id "com.google.protobuf" version "0.9.4"
+  id 'com.diffplug.spotless' version '7.0.4'
+  id "com.google.protobuf" version "0.9.5"
   id 'io.github.gradle-nexus.publish-plugin' version "2.0.0"
 }
 
@@ -28,16 +28,16 @@ repositories {
 group 'org.wiremock'
 
 allprojects {
-  version = "0.10.0"
+  version = "0.11.0"
 
   sourceCompatibility = 11
   targetCompatibility = 11
 
   ext {
     versions = [
-      wiremock: "3.12.1",
-      grpc    : "1.71.0",
-      protobuf: "3.25.6"
+      wiremock: "3.13.1",
+      protobuf: "3.25.8",
+      grpc    : "1.76.0"
     ]
 
     repoUser = this.hasProperty('sonatypeUser') ? sonatypeUser : 'default'
@@ -99,13 +99,14 @@ dependencies {
   api "io.grpc:grpc-protobuf"
   api "io.grpc:grpc-services"
   api "io.grpc:grpc-stub"
+  api "io.grpc:grpc-netty"
 
   implementation "io.grpc:grpc-servlet-jakarta"
   implementation "com.google.protobuf:protobuf-java-util:$versions.protobuf"
 
   implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
-  testFixturesApi(platform('org.junit:junit-bom:5.12.1'))
+  testFixturesApi(platform('org.junit:junit-bom:5.13.4'))
   testFixturesApi "org.junit.jupiter:junit-jupiter"
   testFixturesApi "org.junit.platform:junit-platform-launcher"
   testFixturesApi "org.hamcrest:hamcrest-core:3.0"
@@ -120,6 +121,10 @@ dependencies {
     exclude group: 'org.eclipse.jetty'
     exclude group: 'org.eclipse.jetty.http2'
   })
+
+  constraints {
+    implementation "io.netty:netty-codec-http2:4.2.0.RC3"
+  }
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {

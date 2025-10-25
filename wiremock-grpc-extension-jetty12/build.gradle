@@ -15,9 +15,9 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '7.0.2'
+  id 'com.diffplug.spotless' version '7.0.4'
   id 'com.github.johnrengelman.shadow' version '8.1.1'
-  id "com.google.protobuf" version "0.9.4"
+  id "com.google.protobuf" version "0.9.5"
 }
 
 repositories {
@@ -120,7 +120,7 @@ test {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.6"
+    artifact = "com.google.protobuf:protoc:3.25.8"
   }
 
   plugins {
