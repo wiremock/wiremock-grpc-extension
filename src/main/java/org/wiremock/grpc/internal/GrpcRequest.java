@@ -97,7 +97,7 @@ public class GrpcRequest implements Request {
 
   @Override
   public HttpHeaders getHeaders() {
-    return HeaderCopyingServerInterceptor.HTTP_HEADERS_CONTEXT_KEY.get();
+    return HeaderCopyingServerInterceptor.HTTP_REQUEST_HEADERS_CONTEXT_KEY.get();
   }
 
   @Override
