@@ -25,24 +25,21 @@ import static org.hamcrest.Matchers.is;
 import com.example.grpc.GreetingServiceGrpc;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import io.grpc.CallOptions;
 import io.grpc.Channel;
-import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
 import io.grpc.ClientInterceptors;
-import io.grpc.ForwardingClientCall;
-import io.grpc.ForwardingClientCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
-import io.grpc.Status;
+import io.grpc.stub.MetadataUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.wiremock.grpc.client.GreetingsClient;
 import org.wiremock.grpc.dsl.WireMockGrpcService;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ResposeHeadersAcceptanceTest {
 
@@ -80,9 +77,12 @@ public class ResposeHeadersAcceptanceTest {
 
   @Test
   void httpResponseHeadersAreAddedToTheGrpcTrailers() {
-    TrailerReadingInterceptor trailerReadingInterceptor = new TrailerReadingInterceptor();
-    channel = ClientInterceptors.intercept(managedChannel, trailerReadingInterceptor);
+    AtomicReference<Metadata> headersCapture = new AtomicReference<>();
+    AtomicReference<Metadata> trailersCapture = new AtomicReference<>();
+    ClientInterceptor metadataInterceptor = MetadataUtils.newCaptureMetadataInterceptor(headersCapture, trailersCapture);
+    channel = ClientInterceptors.intercept(managedChannel, metadataInterceptor);
     greetingsClient = new GreetingsClient(channel);
+
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
             .willReturn(
@@ -93,38 +93,8 @@ public class ResposeHeadersAcceptanceTest {
 
     assertThat(greeting, is("Howdy!"));
 
-    Metadata capturedTrailers = trailerReadingInterceptor.getCapturedTrailers();
+    Metadata capturedTrailers = trailersCapture.get();
     Metadata.Key<String> key = Metadata.Key.of("x-my-header", Metadata.ASCII_STRING_MARSHALLER);
     assertThat(capturedTrailers.get(key), is("first,second,third"));
-  }
-
-  public static class TrailerReadingInterceptor implements ClientInterceptor {
-    private Metadata capturedTrailers;
-
-    @Override
-    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-      return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
-          next.newCall(method, callOptions)) {
-        @Override
-        public void start(Listener<RespT> responseListener, Metadata headers) {
-          super.start(
-              new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(
-                  responseListener) {
-
-                @Override
-                public void onClose(Status status, Metadata trailers) {
-                  capturedTrailers = trailers;
-                  super.onClose(status, trailers);
-                }
-              },
-              headers);
-        }
-      };
-    }
-
-    public Metadata getCapturedTrailers() {
-      return capturedTrailers;
-    }
   }
 }
