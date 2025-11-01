@@ -70,7 +70,7 @@ public class GrpcClient implements HttpClient {
           metadata.put(Metadata.Key.of(header.key(), Metadata.ASCII_STRING_MARSHALLER), header.firstValue())
     );
     ClientInterceptor clientInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
-    Channel channel = managedChannelBuilder.intercept(clientInterceptor).build();
+    ManagedChannel channel = managedChannelBuilder.intercept(clientInterceptor).build();
 
     List<HttpHeader> headers = new ArrayList<>();
     headers.add(new HttpHeader("Content-Type", "application/json"));
@@ -110,6 +110,12 @@ public class GrpcClient implements HttpClient {
       }
       headers.add(new HttpHeader(GrpcUtils.GRPC_STATUS_NAME, statusName));
       headers.add(new HttpHeader(GrpcUtils.GRPC_STATUS_REASON, statusReason));
+    } finally {
+        try {
+            channel.shutdown().awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     return grpcRespBuilder.headers(new HttpHeaders(headers.toArray(HttpHeader[]::new))).build();
