@@ -17,6 +17,7 @@ package org.wiremock.grpc.internal;
 
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_NAME;
 import static org.wiremock.grpc.dsl.GrpcResponseDefinitionBuilder.GRPC_STATUS_REASON;
+import static org.wiremock.grpc.internal.UnaryServerCallHandler.getTrailers;
 
 import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
@@ -24,6 +25,7 @@ import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
@@ -49,6 +51,7 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
     final AtomicReference<DynamicMessage> firstResponse = new AtomicReference<>();
     final AtomicReference<WireMockGrpc.Status> responseStatus = new AtomicReference<>();
     final AtomicReference<String> statusReason = new AtomicReference<>();
+    final AtomicReference<Metadata> trailers = new AtomicReference<>();
 
     return new StreamObserver<>() {
       @Override
@@ -91,6 +94,7 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
 
                 responseStatus.set(status);
                 statusReason.set(statusMapping.b);
+                trailers.set(getTrailers(resp));
 
                 return;
               }
@@ -106,6 +110,7 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
 
                 responseStatus.set(status);
                 statusReason.set(reason);
+                trailers.set(getTrailers(resp));
 
                 return;
               }
@@ -134,14 +139,14 @@ public class ClientStreamingServerCallHandler extends BaseCallHandler
           responseObserver.onError(
               Status.fromCodeValue(responseStatus.get().getValue())
                   .withDescription(statusReason.get())
-                  .asRuntimeException());
+                  .asRuntimeException(trailers.get()));
         } else {
           final Pair<Status, String> notFoundStatusMapping =
               GrpcStatusUtils.errorHttpToGrpcStatusMappings.get(HttpStatus.NOT_FOUND_404);
           final Status grpcStatus = notFoundStatusMapping.a;
 
           responseObserver.onError(
-              grpcStatus.withDescription(notFoundStatusMapping.b).asRuntimeException());
+              grpcStatus.withDescription(notFoundStatusMapping.b).asRuntimeException(trailers.get()));
         }
       }
     };

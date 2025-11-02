@@ -21,17 +21,27 @@ import static org.wiremock.grpc.internal.Delays.delayIfRequired;
 
 import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.Response;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Metadata;
 import io.grpc.Status;
+import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import org.wiremock.grpc.dsl.WireMockGrpc;
 
+import java.util.Base64;
+
 public class UnaryServerCallHandler extends BaseCallHandler
     implements ServerCalls.UnaryMethod<DynamicMessage, DynamicMessage> {
+
+  public static final Metadata.Key<com.google.rpc.Status> STATUS_DETAILS_KEY =
+      Metadata.Key.of("grpc-status-details-bin", ProtoUtils.metadataMarshaller(
+          com.google.rpc.Status.getDefaultInstance()));
 
   public UnaryServerCallHandler(
       StubRequestHandler stubRequestHandler,
@@ -69,7 +79,7 @@ public class UnaryServerCallHandler extends BaseCallHandler
             final Pair<Status, String> statusMapping =
                 GrpcStatusUtils.errorHttpToGrpcStatusMappings.get(resp.getStatus());
             responseObserver.onError(
-                statusMapping.a.withDescription(statusMapping.b).asRuntimeException());
+                statusMapping.a.withDescription(statusMapping.b).asRuntimeException(getTrailers(resp)));
             return;
           }
 
@@ -84,7 +94,7 @@ public class UnaryServerCallHandler extends BaseCallHandler
             responseObserver.onError(
                 Status.fromCodeValue(status.getValue())
                     .withDescription(reason)
-                    .asRuntimeException());
+                    .asRuntimeException(getTrailers(resp)));
             return;
           }
 
@@ -97,5 +107,21 @@ public class UnaryServerCallHandler extends BaseCallHandler
           responseObserver.onCompleted();
         },
         ServeEvent.of(wireMockRequest));
+  }
+
+  public static Metadata getTrailers(Response resp) {
+    final HttpHeader statusDetailsHeader = resp.getHeaders().getHeader(STATUS_DETAILS_KEY.name());
+    if (statusDetailsHeader.isPresent()) {
+      Metadata trailers = new Metadata();
+      byte[] headerValue = Base64.getDecoder().decode(statusDetailsHeader.firstValue());
+      try {
+        trailers.put(STATUS_DETAILS_KEY, com.google.rpc.Status.parseFrom(headerValue));
+        return trailers;
+      } catch (InvalidProtocolBufferException e) {
+        // It would be nice if we could use the notifier to log this.
+        System.err.println("Failed to parse trailers from header. " + e.getMessage());
+      }
+    }
+    return null;
   }
 }
