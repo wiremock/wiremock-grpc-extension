@@ -69,11 +69,14 @@ public class RequestHeadersAcceptanceTest {
 
   @Test
   void arbitraryRequestHeaderCanBeUsedWhenMatchingAndTemplating() {
-    channel = ClientInterceptors.intercept(managedChannel, new HeaderAdditionInterceptor());
+    String headerValue = "match me";
+    channel =
+        ClientInterceptors.intercept(
+            managedChannel, new HeaderAdditionInterceptor(X_MY_HEADER, headerValue));
     greetingsClient = new GreetingsClient(channel);
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
-            .withHeader(X_MY_HEADER, equalTo("match me"))
+            .withHeader(X_MY_HEADER, equalTo(headerValue))
             .willReturn(
                 okJson(
                         "{\n"
@@ -83,7 +86,7 @@ public class RequestHeadersAcceptanceTest {
 
     String greeting = greetingsClient.greet("Whatever");
 
-    assertThat(greeting, is("The header value was: match me"));
+    assertThat(greeting, is("The header value was: " + headerValue));
   }
 
   @Test
@@ -104,8 +107,15 @@ public class RequestHeadersAcceptanceTest {
 
   public static class HeaderAdditionInterceptor implements ClientInterceptor {
 
-    static final Metadata.Key<String> CUSTOM_HEADER_KEY =
-        Metadata.Key.of(X_MY_HEADER, Metadata.ASCII_STRING_MARSHALLER);
+    final String headerName;
+    final String headerValue;
+    final Metadata.Key<String> grpcHeaderKey;
+
+    public HeaderAdditionInterceptor(String headerName, String headerValue) {
+      this.headerName = headerName;
+      this.headerValue = headerValue;
+      this.grpcHeaderKey = Metadata.Key.of(headerName, Metadata.ASCII_STRING_MARSHALLER);
+    }
 
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
@@ -115,7 +125,7 @@ public class RequestHeadersAcceptanceTest {
 
         @Override
         public void start(Listener<RespT> responseListener, Metadata headers) {
-          headers.put(CUSTOM_HEADER_KEY, "match me");
+          headers.put(grpcHeaderKey, headerValue);
           super.start(responseListener, headers);
         }
       };

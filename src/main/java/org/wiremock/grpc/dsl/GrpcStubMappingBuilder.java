@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,13 @@ import com.github.tomakehurst.wiremock.http.DelayDistribution;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.http.LogNormal;
 import com.github.tomakehurst.wiremock.http.UniformDistribution;
+import com.github.tomakehurst.wiremock.matching.MultiValuePattern;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.wiremock.annotations.Beta;
 
 @Beta(justification = "Incubating extension: https://github.com/wiremock/wiremock/issues/2383")
@@ -36,6 +39,8 @@ public class GrpcStubMappingBuilder {
   private GrpcResponseDefinitionBuilder responseBuilder;
 
   private List<StringValuePattern> requestMessageJsonPatterns = new ArrayList<>();
+  private Map<String, StringValuePattern> stringValuePatternMap = new HashMap<>();
+  private Map<String, MultiValuePattern> multiValuePatternMap = new HashMap<>();
 
   public GrpcStubMappingBuilder(String method) {
     this.method = method;
@@ -43,6 +48,16 @@ public class GrpcStubMappingBuilder {
 
   public GrpcStubMappingBuilder withRequestMessage(StringValuePattern requestMessageJsonPattern) {
     this.requestMessageJsonPatterns.add(requestMessageJsonPattern);
+    return this;
+  }
+
+  public GrpcStubMappingBuilder withHeader(String header, StringValuePattern pattern) {
+    this.stringValuePatternMap.put(header, pattern);
+    return this;
+  }
+
+  public GrpcStubMappingBuilder withHeader(String header, MultiValuePattern pattern) {
+    this.multiValuePatternMap.put(header, pattern);
     return this;
   }
 
@@ -83,6 +98,8 @@ public class GrpcStubMappingBuilder {
   public StubMapping build(String serviceName) {
     final MappingBuilder mappingBuilder = WireMock.post(grpcUrlPath(serviceName, method));
     requestMessageJsonPatterns.forEach(mappingBuilder::withRequestBody);
+    stringValuePatternMap.forEach((mappingBuilder::withHeader));
+    multiValuePatternMap.forEach((mappingBuilder::withHeader));
     return mappingBuilder.willReturn(responseBuilder.build()).build();
   }
 }
