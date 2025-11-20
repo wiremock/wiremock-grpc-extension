@@ -15,10 +15,8 @@
  */
 package org.wiremock.grpc.internal;
 
-import com.github.tomakehurst.wiremock.admin.Router;
 import com.github.tomakehurst.wiremock.common.JettySettings;
 import com.github.tomakehurst.wiremock.core.Options;
-import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
 import com.github.tomakehurst.wiremock.http.*;
 import com.github.tomakehurst.wiremock.jetty12.Jetty12HttpServer;
 import jakarta.servlet.DispatcherType;
@@ -28,7 +26,7 @@ import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtension {
+public class GrpcHttpServerFactory implements HttpServerFactory, GrpcResetAdminApiTask {
 
   private final JettySettings jettySettings;
   private final ProtoDescriptorStore protoDescriptorStore;
@@ -46,6 +44,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtensi
         jettySettings != null ? jettySettings : JettySettings.Builder.aJettySettings().build();
   }
 
+  @Override
   public void loadFileDescriptors() {
     grpcFilter.loadFileDescriptors(protoDescriptorStore.loadAllFileDescriptors());
   }
@@ -76,10 +75,5 @@ public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtensi
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
     };
-  }
-
-  @Override
-  public void contributeAdminApiRoutes(Router router) {
-    router.add(RequestMethod.POST, "/ext/grpc/reset", new GrpcResetAdminApiTask(this));
   }
 }

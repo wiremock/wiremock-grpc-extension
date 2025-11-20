@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Thomas Akehurst
+ * Copyright (C) 2024-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,26 @@
 package org.wiremock.grpc.internal;
 
 import com.github.tomakehurst.wiremock.admin.AdminTask;
+import com.github.tomakehurst.wiremock.admin.Router;
 import com.github.tomakehurst.wiremock.common.url.PathParams;
 import com.github.tomakehurst.wiremock.core.Admin;
+import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 
-public class GrpcResetAdminApiTask implements AdminTask {
+public interface GrpcResetAdminApiTask extends AdminTask, AdminApiExtension {
 
-  private final GrpcHttpServerFactory grpcHttpServerFactory;
+  void loadFileDescriptors();
 
-  public GrpcResetAdminApiTask(GrpcHttpServerFactory grpcHttpServerFactory) {
-    this.grpcHttpServerFactory = grpcHttpServerFactory;
+  @Override
+  default ResponseDefinition execute(Admin admin, ServeEvent serveEvent, PathParams pathParams) {
+    loadFileDescriptors();
+    return ResponseDefinition.ok();
   }
 
   @Override
-  public ResponseDefinition execute(Admin admin, ServeEvent serveEvent, PathParams pathParams) {
-    grpcHttpServerFactory.loadFileDescriptors();
-    return ResponseDefinition.ok();
+  default void contributeAdminApiRoutes(Router router) {
+    router.add(RequestMethod.POST, "/ext/grpc/reset", this);
   }
 }
