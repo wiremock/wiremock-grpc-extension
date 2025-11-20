@@ -20,25 +20,19 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
-import com.github.tomakehurst.wiremock.common.SingleRootFileSource;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.store.files.FileSourceBlobStore;
-import java.io.File;
+import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 
 public class GrpcHttpServerFactoryTest {
-
-  @TempDir File tempDir;
 
   @Test
   public void obeysJettySettings() {
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(0).build();
       GrpcHttpServerFactory grpcHttpServerFactory =
-          new GrpcHttpServerFactory(
-              new FileSourceBlobStore(new SingleRootFileSource(tempDir)), jettySettings);
+          new GrpcHttpServerFactory(List::of, jettySettings);
       var exception =
           assertThrowsExactly(
               IllegalArgumentException.class,
@@ -48,8 +42,7 @@ public class GrpcHttpServerFactoryTest {
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(10).build();
       GrpcHttpServerFactory grpcHttpServerFactory =
-          new GrpcHttpServerFactory(
-              new FileSourceBlobStore(new SingleRootFileSource(tempDir)), jettySettings);
+          new GrpcHttpServerFactory(List::of, jettySettings);
       assertDoesNotThrow(
           () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
     }

@@ -16,21 +16,14 @@
 package org.wiremock.grpc.internal;
 
 import com.github.tomakehurst.wiremock.admin.Router;
-import com.github.tomakehurst.wiremock.common.Exceptions;
 import com.github.tomakehurst.wiremock.common.JettySettings;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
 import com.github.tomakehurst.wiremock.http.*;
 import com.github.tomakehurst.wiremock.jetty12.Jetty12HttpServer;
-import com.github.tomakehurst.wiremock.store.BlobStore;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.Descriptors;
 import jakarta.servlet.DispatcherType;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
@@ -38,14 +31,15 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtension {
 
   private final JettySettings jettySettings;
-  private final BlobStore protoDescriptorStore;
+  private final ProtoDescriptorStore protoDescriptorStore;
   protected GrpcFilter grpcFilter;
 
-  public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
+  public GrpcHttpServerFactory(ProtoDescriptorStore protoDescriptorStore) {
     this(protoDescriptorStore, null);
   }
 
-  public GrpcHttpServerFactory(BlobStore protoDescriptorStore, JettySettings jettySettings) {
+  public GrpcHttpServerFactory(
+      ProtoDescriptorStore protoDescriptorStore, JettySettings jettySettings) {
     Objects.requireNonNull(protoDescriptorStore, "protoDescriptorStore cannot be null");
     this.protoDescriptorStore = protoDescriptorStore;
     this.jettySettings =
@@ -53,32 +47,7 @@ public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtensi
   }
 
   public void loadFileDescriptors() {
-    List<Descriptors.FileDescriptor> fileDescriptors = new ArrayList<>();
-    protoDescriptorStore
-        .getAllKeys()
-        .filter(key -> key.endsWith(".dsc") || key.endsWith(".desc"))
-        .map(
-            key ->
-                protoDescriptorStore
-                    .get(key)
-                    .map(
-                        data ->
-                            Exceptions.uncheck(
-                                () -> DescriptorProtos.FileDescriptorSet.parseFrom(data),
-                                DescriptorProtos.FileDescriptorSet.class)))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .flatMap(fileDescriptorSet -> fileDescriptorSet.getFileList().stream())
-        .forEach(
-            fileDescriptorProto ->
-                Exceptions.uncheck(
-                    () ->
-                        fileDescriptors.add(
-                            Descriptors.FileDescriptor.buildFrom(
-                                fileDescriptorProto,
-                                fileDescriptors.toArray(Descriptors.FileDescriptor[]::new),
-                                true))));
-    grpcFilter.loadFileDescriptors(fileDescriptors);
+    grpcFilter.loadFileDescriptors(protoDescriptorStore.loadAllFileDescriptors());
   }
 
   @Override
