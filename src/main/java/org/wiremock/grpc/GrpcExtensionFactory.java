@@ -18,7 +18,6 @@ package org.wiremock.grpc;
 import com.github.tomakehurst.wiremock.extension.Extension;
 import com.github.tomakehurst.wiremock.extension.ExtensionFactory;
 import com.github.tomakehurst.wiremock.extension.WireMockServices;
-import com.github.tomakehurst.wiremock.http.HttpServerFactoryLoader;
 import java.util.List;
 import org.wiremock.grpc.internal.GrpcHttpClientFactory;
 import org.wiremock.grpc.internal.GrpcHttpServerFactory;
@@ -32,10 +31,5 @@ public class GrpcExtensionFactory implements ExtensionFactory {
         new GrpcHttpServerFactory(services.getStores().getBlobStore("grpc")),
         new GrpcHttpClientFactory(),
         new GrpcStubMappingTransformer());
-  }
-
-  @Override
-  public boolean isLoadable() {
-    return HttpServerFactoryLoader.isJetty11();
   }
 }

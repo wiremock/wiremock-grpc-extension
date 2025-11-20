@@ -1,5 +1,2 @@
 rootProject.name = 'wiremock-grpc-extension'
 include 'wiremock-grpc-extension-standalone'
-if (JavaVersion.current() >= JavaVersion.VERSION_17) {
-  include 'wiremock-grpc-extension-jetty12'
-}

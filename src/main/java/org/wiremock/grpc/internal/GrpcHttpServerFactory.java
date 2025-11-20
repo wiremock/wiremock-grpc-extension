@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Thomas Akehurst
+ * Copyright (C) 2023-2025 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ package org.wiremock.grpc.internal;
 
 import com.github.tomakehurst.wiremock.admin.Router;
 import com.github.tomakehurst.wiremock.common.Exceptions;
+import com.github.tomakehurst.wiremock.common.JettySettings;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.extension.AdminApiExtension;
 import com.github.tomakehurst.wiremock.http.*;
-import com.github.tomakehurst.wiremock.jetty11.Jetty11HttpServer;
+import com.github.tomakehurst.wiremock.jetty12.Jetty12HttpServer;
 import com.github.tomakehurst.wiremock.store.BlobStore;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
@@ -28,17 +29,27 @@ import jakarta.servlet.DispatcherType;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.FilterHolder;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtension {
 
+  private final JettySettings jettySettings;
   private final BlobStore protoDescriptorStore;
   protected GrpcFilter grpcFilter;
 
   public GrpcHttpServerFactory(BlobStore protoDescriptorStore) {
+    this(protoDescriptorStore, null);
+  }
+
+  public GrpcHttpServerFactory(BlobStore protoDescriptorStore, JettySettings jettySettings) {
+    Objects.requireNonNull(protoDescriptorStore, "protoDescriptorStore cannot be null");
     this.protoDescriptorStore = protoDescriptorStore;
+    this.jettySettings =
+        jettySettings != null ? jettySettings : JettySettings.Builder.aJettySettings().build();
   }
 
   public void loadFileDescriptors() {
@@ -80,7 +91,12 @@ public class GrpcHttpServerFactory implements HttpServerFactory, AdminApiExtensi
       Options options,
       AdminRequestHandler adminRequestHandler,
       StubRequestHandler stubRequestHandler) {
-    return new Jetty11HttpServer(options, adminRequestHandler, stubRequestHandler) {
+    return new Jetty12HttpServer(
+        options,
+        adminRequestHandler,
+        stubRequestHandler,
+        jettySettings,
+        new QueuedThreadPool(options.containerThreads())) {
       @Override
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
