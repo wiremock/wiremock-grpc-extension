@@ -19,6 +19,7 @@ import static com.github.tomakehurst.wiremock.common.Pair.pair;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.github.tomakehurst.wiremock.common.Exceptions;
+import com.github.tomakehurst.wiremock.common.Notifier;
 import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
@@ -48,9 +49,11 @@ public class GrpcFilter extends HttpFilter {
   //  private GrpcServlet grpcServlet;
   private ServletAdapter servletAdapter;
   private final StubRequestHandler stubRequestHandler;
+  private final Notifier notifier;
 
-  public GrpcFilter(StubRequestHandler stubRequestHandler) {
+  public GrpcFilter(StubRequestHandler stubRequestHandler, Notifier notifier) {
     this.stubRequestHandler = stubRequestHandler;
+    this.notifier = notifier;
   }
 
   public void loadFileDescriptors(List<Descriptors.FileDescriptor> fileDescriptors) {
@@ -154,10 +157,10 @@ public class GrpcFilter extends HttpFilter {
     return methodDescriptor.isClientStreaming()
         ? ServerCalls.asyncClientStreamingCall(
             new ClientStreamingServerCallHandler(
-                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter))
+                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter, notifier))
         : ServerCalls.asyncUnaryCall(
             new UnaryServerCallHandler(
-                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter));
+                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter, notifier));
   }
 
   private static MethodDescriptor<DynamicMessage, DynamicMessage> buildMessageDescriptorInstance(
