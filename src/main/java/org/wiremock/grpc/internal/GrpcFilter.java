@@ -15,22 +15,15 @@
  */
 package org.wiremock.grpc.internal;
 
-import static com.github.tomakehurst.wiremock.common.Pair.pair;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.wiremock.grpc.internal.GrpcUtils.buildAndBindServices;
 
 import com.github.tomakehurst.wiremock.common.Exceptions;
-import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.http.StubRequestHandler;
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.TypeRegistry;
 import io.grpc.*;
-import io.grpc.protobuf.ProtoServiceDescriptorSupplier;
-import io.grpc.protobuf.ProtoUtils;
-import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import io.grpc.servlet.jakarta.ServletAdapter;
 import io.grpc.servlet.jakarta.ServletServerBuilder;
-import io.grpc.stub.ServerCalls;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpFilter;
@@ -40,8 +33,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class GrpcFilter extends HttpFilter {
 
@@ -59,135 +50,10 @@ public class GrpcFilter extends HttpFilter {
 
   public void loadFileDescriptors(
       List<Descriptors.FileDescriptor> fileDescriptors, List<ServerInterceptor> interceptors) {
-    final List<BindableService> services = buildServices(fileDescriptors);
-    servletAdapter = loadServices(services, interceptors);
-  }
-
-  private static ServletAdapter loadServices(
-      List<? extends BindableService> bindableServices, List<ServerInterceptor> interceptors) {
-    final HeaderCopyingServerInterceptor headerCopyingServerInterceptor =
-        new HeaderCopyingServerInterceptor();
-    final ServletServerBuilder serverBuilder = new ServletServerBuilder();
-    bindableServices.forEach(
-        service ->
-            serverBuilder.addService(
-                ServerInterceptors.intercept(
-                    ServerInterceptors.intercept(service, headerCopyingServerInterceptor),
-                    interceptors)));
-    return serverBuilder.buildServletAdapter();
-  }
-
-  private List<BindableService> buildServices(List<Descriptors.FileDescriptor> fileDescriptors) {
-    final TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.newBuilder();
-    fileDescriptors.forEach(
-        fileDescriptor -> fileDescriptor.getMessageTypes().forEach(typeRegistryBuilder::add));
-    final TypeRegistry typeRegistry = typeRegistryBuilder.build();
-    JsonMessageConverter jsonMessageConverter = new JsonMessageConverter(typeRegistry);
-
-    final Stream<BindableService> servicesFromDescriptors =
-        fileDescriptors.stream()
-            .flatMap(
-                fileDescriptor ->
-                    fileDescriptor.getServices().stream()
-                        .map(service -> pair(fileDescriptor, service)))
-            .map(
-                fileAndServiceDescriptor ->
-                    () -> {
-                      final Descriptors.FileDescriptor fileDescriptor = fileAndServiceDescriptor.a;
-                      final Descriptors.ServiceDescriptor serviceDescriptor =
-                          fileAndServiceDescriptor.b;
-                      final ServiceDescriptor.Builder serviceDescriptorBuilder =
-                          ServiceDescriptor.newBuilder(serviceDescriptor.getFullName())
-                              .setSchemaDescriptor(
-                                  new ProtoServiceDescriptorSupplier() {
-
-                                    @Override
-                                    public Descriptors.FileDescriptor getFileDescriptor() {
-                                      return fileDescriptor;
-                                    }
-
-                                    @Override
-                                    public Descriptors.ServiceDescriptor getServiceDescriptor() {
-                                      return serviceDescriptor;
-                                    }
-                                  });
-
-                      final List<
-                              Pair<
-                                  MethodDescriptor<DynamicMessage, DynamicMessage>,
-                                  ServerCallHandler<DynamicMessage, DynamicMessage>>>
-                          methodDescriptorHandlerPairs =
-                              serviceDescriptor.getMethods().stream()
-                                  .map(
-                                      methodDescriptor ->
-                                          pair(
-                                              buildMessageDescriptorInstance(
-                                                  serviceDescriptor, methodDescriptor),
-                                              buildHandler(
-                                                  serviceDescriptor,
-                                                  methodDescriptor,
-                                                  jsonMessageConverter)))
-                                  .collect(Collectors.toList());
-
-                      methodDescriptorHandlerPairs.stream()
-                          .map(pair -> pair.a)
-                          .forEach(serviceDescriptorBuilder::addMethod);
-
-                      final ServerServiceDefinition.Builder builder =
-                          ServerServiceDefinition.builder(serviceDescriptorBuilder.build());
-
-                      methodDescriptorHandlerPairs.forEach(
-                          pair -> builder.addMethod(pair.a, pair.b));
-
-                      return builder.build();
-                    });
-
-    final BindableService reflectionService = ProtoReflectionServiceV1.newInstance();
-    return Stream.concat(servicesFromDescriptors, Stream.of(reflectionService))
-        .collect(Collectors.toUnmodifiableList());
-  }
-
-  private ServerCallHandler<DynamicMessage, DynamicMessage> buildHandler(
-      Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor,
-      JsonMessageConverter jsonMessageConverter) {
-    return methodDescriptor.isClientStreaming()
-        ? ServerCalls.asyncClientStreamingCall(
-            new ClientStreamingServerCallHandler(
-                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter))
-        : ServerCalls.asyncUnaryCall(
-            new UnaryServerCallHandler(
-                stubRequestHandler, serviceDescriptor, methodDescriptor, jsonMessageConverter));
-  }
-
-  private static MethodDescriptor<DynamicMessage, DynamicMessage> buildMessageDescriptorInstance(
-      Descriptors.ServiceDescriptor serviceDescriptor,
-      Descriptors.MethodDescriptor methodDescriptor) {
-    return MethodDescriptor.<DynamicMessage, DynamicMessage>newBuilder()
-        .setType(getMethodTypeFromDesc(methodDescriptor))
-        .setFullMethodName(
-            MethodDescriptor.generateFullMethodName(
-                serviceDescriptor.getFullName(), methodDescriptor.getName()))
-        .setRequestMarshaller(
-            ProtoUtils.marshaller(
-                DynamicMessage.getDefaultInstance(methodDescriptor.getInputType())))
-        .setResponseMarshaller(
-            ProtoUtils.marshaller(
-                DynamicMessage.getDefaultInstance(methodDescriptor.getOutputType())))
-        .build();
-  }
-
-  private static MethodDescriptor.MethodType getMethodTypeFromDesc(
-      Descriptors.MethodDescriptor methodDesc) {
-    if (!methodDesc.isServerStreaming() && !methodDesc.isClientStreaming()) {
-      return MethodDescriptor.MethodType.UNARY;
-    } else if (methodDesc.isServerStreaming() && !methodDesc.isClientStreaming()) {
-      return MethodDescriptor.MethodType.SERVER_STREAMING;
-    } else if (!methodDesc.isServerStreaming()) {
-      return MethodDescriptor.MethodType.CLIENT_STREAMING;
-    } else {
-      return MethodDescriptor.MethodType.BIDI_STREAMING;
-    }
+    servletAdapter =
+        buildAndBindServices(
+                new ServletServerBuilder(), fileDescriptors, stubRequestHandler, interceptors)
+            .buildServletAdapter();
   }
 
   @Override
