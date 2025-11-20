@@ -21,15 +21,15 @@ import com.github.tomakehurst.wiremock.extension.WireMockServices;
 import java.util.List;
 import org.wiremock.grpc.internal.BlobProtoDescriptorStore;
 import org.wiremock.grpc.internal.GrpcHttpClientFactory;
-import org.wiremock.grpc.internal.GrpcHttpServerFactory;
 import org.wiremock.grpc.internal.GrpcStubMappingTransformer;
+import org.wiremock.grpc.internal.Jetty12GrpcHttpServerFactory;
 
 public class GrpcExtensionFactory implements ExtensionFactory {
 
   @Override
   public List<Extension> create(WireMockServices services) {
     return List.of(
-        new GrpcHttpServerFactory(
+        new Jetty12GrpcHttpServerFactory(
             new BlobProtoDescriptorStore(services.getStores().getBlobStore("grpc"))),
         new GrpcHttpClientFactory(),
         new GrpcStubMappingTransformer());

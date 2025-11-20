@@ -26,17 +26,17 @@ import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-public class GrpcHttpServerFactory implements HttpServerFactory, GrpcResetAdminApiTask {
+public class Jetty12GrpcHttpServerFactory implements HttpServerFactory, GrpcResetAdminApiTask {
 
   private final JettySettings jettySettings;
   private final ProtoDescriptorStore protoDescriptorStore;
   protected GrpcFilter grpcFilter;
 
-  public GrpcHttpServerFactory(ProtoDescriptorStore protoDescriptorStore) {
+  public Jetty12GrpcHttpServerFactory(ProtoDescriptorStore protoDescriptorStore) {
     this(protoDescriptorStore, null);
   }
 
-  public GrpcHttpServerFactory(
+  public Jetty12GrpcHttpServerFactory(
       ProtoDescriptorStore protoDescriptorStore, JettySettings jettySettings) {
     Objects.requireNonNull(protoDescriptorStore, "protoDescriptorStore cannot be null");
     this.protoDescriptorStore = protoDescriptorStore;

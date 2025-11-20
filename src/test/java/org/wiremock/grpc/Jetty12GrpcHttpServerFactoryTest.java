@@ -23,16 +23,16 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.wiremock.grpc.internal.GrpcHttpServerFactory;
+import org.wiremock.grpc.internal.Jetty12GrpcHttpServerFactory;
 
-public class GrpcHttpServerFactoryTest {
+public class Jetty12GrpcHttpServerFactoryTest {
 
   @Test
   public void obeysJettySettings() {
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(0).build();
-      GrpcHttpServerFactory grpcHttpServerFactory =
-          new GrpcHttpServerFactory(List::of, jettySettings);
+      Jetty12GrpcHttpServerFactory grpcHttpServerFactory =
+          new Jetty12GrpcHttpServerFactory(List::of, jettySettings);
       var exception =
           assertThrowsExactly(
               IllegalArgumentException.class,
@@ -41,8 +41,8 @@ public class GrpcHttpServerFactoryTest {
     }
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(10).build();
-      GrpcHttpServerFactory grpcHttpServerFactory =
-          new GrpcHttpServerFactory(List::of, jettySettings);
+      Jetty12GrpcHttpServerFactory grpcHttpServerFactory =
+          new Jetty12GrpcHttpServerFactory(List::of, jettySettings);
       assertDoesNotThrow(
           () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
     }
