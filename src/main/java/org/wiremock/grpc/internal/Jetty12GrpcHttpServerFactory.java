@@ -26,32 +26,38 @@ import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-public class Jetty12GrpcHttpServerFactory implements HttpServerFactory, GrpcResetAdminApiTask {
+public class Jetty12GrpcHttpServerFactory implements GrpcHttpServerFactory {
 
   private final JettySettings jettySettings;
-  private final ProtoDescriptorStore protoDescriptorStore;
+  private ProtoDescriptorStore protoDescriptorStore;
   protected GrpcFilter grpcFilter;
 
-  public Jetty12GrpcHttpServerFactory(ProtoDescriptorStore protoDescriptorStore) {
-    this(protoDescriptorStore, null);
+  public Jetty12GrpcHttpServerFactory() {
+    this(null);
   }
 
-  public Jetty12GrpcHttpServerFactory(
-      ProtoDescriptorStore protoDescriptorStore, JettySettings jettySettings) {
-    Objects.requireNonNull(protoDescriptorStore, "protoDescriptorStore cannot be null");
-    this.protoDescriptorStore = protoDescriptorStore;
+  public Jetty12GrpcHttpServerFactory(JettySettings jettySettings) {
     this.jettySettings =
         jettySettings != null ? jettySettings : JettySettings.Builder.aJettySettings().build();
   }
 
   @Override
   public void loadFileDescriptors() {
+    if (protoDescriptorStore == null) {
+      throw new IllegalStateException(
+          "Must call initProtoDescriptorStore before using the server factory");
+    }
     grpcFilter.loadFileDescriptors(protoDescriptorStore.loadAllFileDescriptors());
   }
 
   @Override
   public String getName() {
     return "grpc";
+  }
+
+  @Override
+  public void initProtoDescriptorStore(ProtoDescriptorStore store) {
+    protoDescriptorStore = Objects.requireNonNull(store, "store cannot be null");
   }
 
   @Override

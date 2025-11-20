@@ -32,7 +32,8 @@ public class Jetty12GrpcHttpServerFactoryTest {
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(0).build();
       Jetty12GrpcHttpServerFactory grpcHttpServerFactory =
-          new Jetty12GrpcHttpServerFactory(List::of, jettySettings);
+          new Jetty12GrpcHttpServerFactory(jettySettings);
+      grpcHttpServerFactory.initProtoDescriptorStore(List::of);
       var exception =
           assertThrowsExactly(
               IllegalArgumentException.class,
@@ -42,9 +43,25 @@ public class Jetty12GrpcHttpServerFactoryTest {
     {
       var jettySettings = aJettySettings().withResponseHeaderSize(10).build();
       Jetty12GrpcHttpServerFactory grpcHttpServerFactory =
-          new Jetty12GrpcHttpServerFactory(List::of, jettySettings);
+          new Jetty12GrpcHttpServerFactory(jettySettings);
+      grpcHttpServerFactory.initProtoDescriptorStore(List::of);
       assertDoesNotThrow(
           () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
     }
+  }
+
+  @Test
+  public void helpfulErrorWhenServerIsBuiltBeforeInitialisingDescriptorStore() {
+    Jetty12GrpcHttpServerFactory grpcHttpServerFactory = new Jetty12GrpcHttpServerFactory();
+    var exception =
+        assertThrowsExactly(
+            IllegalStateException.class,
+            () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
+    assertEquals(
+        "Must call initProtoDescriptorStore before using the server factory",
+        exception.getMessage());
+    grpcHttpServerFactory.initProtoDescriptorStore(List::of);
+    assertDoesNotThrow(
+        () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
   }
 }
