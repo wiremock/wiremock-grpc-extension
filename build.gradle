@@ -93,29 +93,47 @@ spotless {
 }
 
 dependencies {
+  api "org.wiremock:wiremock-common:$versions.wiremock"
   api "org.wiremock:wiremock-jetty:$versions.wiremock"
 
   api platform("io.grpc:grpc-bom:$versions.grpc")
-  api "io.grpc:grpc-protobuf"
-  api "io.grpc:grpc-services"
   api "io.grpc:grpc-stub"
-  api "io.grpc:grpc-netty"
+  api "io.grpc:grpc-api"
+  api "com.google.protobuf:protobuf-java:$versions.protobuf"
+  api 'jakarta.servlet:jakarta.servlet-api:6.1.0'
 
+  implementation "io.grpc:grpc-protobuf"
+  implementation "io.grpc:grpc-services"
   implementation "io.grpc:grpc-servlet-jakarta"
   implementation "com.google.protobuf:protobuf-java-util:$versions.protobuf"
 
-  implementation 'javax.annotation:javax.annotation-api:1.3.2'
+  implementation platform('org.eclipse.jetty:jetty-bom:12.0.29')
+  implementation 'org.eclipse.jetty.ee10:jetty-ee10-servlet'
+  implementation 'org.eclipse.jetty:jetty-http'
+  implementation 'org.eclipse.jetty:jetty-util'
 
-  testFixturesApi(platform('org.junit:junit-bom:5.13.4'))
-  testFixturesApi "org.junit.jupiter:junit-jupiter"
-  testFixturesApi "org.junit.platform:junit-platform-launcher"
-  testFixturesApi "org.hamcrest:hamcrest-core:3.0"
-  testFixturesApi "org.hamcrest:hamcrest-library:3.0"
-  testFixturesApi 'org.awaitility:awaitility:4.3.0'
+  compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+  implementation platform('com.fasterxml.jackson:jackson-bom:2.20.1')
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-  testFixturesApi "io.grpc:grpc-okhttp"
+  testImplementation(platform('org.junit:junit-bom:5.13.4'))
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testImplementation 'org.junit.jupiter:junit-jupiter-params'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.hamcrest:hamcrest:3.0'
 
-  testFixturesApi 'javax.annotation:javax.annotation-api:1.3.2'
+  testImplementation 'com.google.guava:guava:33.5.0-jre'
+  testImplementation 'commons-io:commons-io:2.19.0'
+  testRuntimeOnly "io.grpc:grpc-okhttp"
+
+  testFixturesImplementation "io.grpc:grpc-protobuf"
+  testFixturesApi "io.grpc:grpc-stub"
+  testFixturesApi "io.grpc:grpc-api"
+
+  testFixturesApi 'com.google.guava:guava:33.5.0-jre'
+  testFixturesApi "com.google.protobuf:protobuf-java:$versions.protobuf"
+  testFixturesCompileOnly 'javax.annotation:javax.annotation-api:1.3.2'
 
   testImplementation(testFixtures(project(":")), {
     exclude group: 'org.eclipse.jetty'
@@ -312,4 +330,23 @@ int getMinorVersion() {
 
 int getPatchVersion() {
   Integer.valueOf(project.version.substring(project.version.lastIndexOf('.') + 1))
+}
+
+tasks.check {
+  dependsOn(buildHealth)
+}
+
+dependencyAnalysis {
+  issues {
+    all {
+      onAny {
+        severity("fail")
+      }
+    }
+  }
+  usage {
+    analysis {
+      checkSuperClasses(true)
+    }
+  }
 }

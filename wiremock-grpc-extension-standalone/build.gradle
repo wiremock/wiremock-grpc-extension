@@ -182,3 +182,13 @@ protobuf {
 
 processTestResources.dependsOn generateProto
 processTestResources.dependsOn generateTestProto
+
+dependencyAnalysis {
+  issues {
+    project(project.path) {
+      onAny {
+        exclude(":")
+      }
+    }
+  }
+}
