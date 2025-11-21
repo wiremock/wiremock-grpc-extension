@@ -40,6 +40,7 @@ import static org.wiremock.grpc.dsl.WireMockGrpc.jsonTemplate;
 import static org.wiremock.grpc.dsl.WireMockGrpc.message;
 import static org.wiremock.grpc.dsl.WireMockGrpc.messageAsAny;
 import static org.wiremock.grpc.dsl.WireMockGrpc.method;
+import static org.wiremock.grpc.internal.UnaryServerCallHandler.STATUS_DETAILS_KEY;
 
 import com.example.grpc.AnotherGreetingServiceGrpc;
 import com.example.grpc.GreetingServiceGrpc;
@@ -58,8 +59,11 @@ import io.grpc.reflection.v1.ServerReflectionRequest;
 import io.grpc.reflection.v1.ServerReflectionResponse;
 import io.grpc.reflection.v1.ServiceResponse;
 import io.grpc.stub.StreamObserver;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
@@ -205,14 +209,24 @@ public class GrpcAcceptanceTest {
   @ParameterizedTest
   @MethodSource("statusProvider")
   void shouldReturnTheCorrectGrpcErrorStatusForCorrespondingHttpStatus(
-      Integer httpStatus, String grpcStatus, String message) {
+      Integer httpStatus, String grpcStatus, String message) throws IOException {
+    com.google.rpc.Status gStatus = com.google.rpc.Status.newBuilder()
+        .setCode(io.grpc.Status.Code.valueOf(grpcStatus).value())
+        .setMessage("Oh, dear! It was " + grpcStatus)
+        .build();
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    gStatus.writeTo(stream);
     wm.stubFor(
         post(urlPathEqualTo("/com.example.grpc.GreetingService/greeting"))
-            .willReturn(aResponse().withStatus(httpStatus)));
+            .willReturn(aResponse()
+                .withStatus(httpStatus)
+                .withHeader("grpc-status-details-bin",
+                    Base64.getEncoder().encodeToString(stream.toByteArray()))));
 
     StatusRuntimeException exception =
         assertThrows(StatusRuntimeException.class, () -> greetingsClient.greet("Tom"));
     assertThat(exception.getMessage(), is(grpcStatus + ": " + message));
+    assertThat(exception.getTrailers().get(STATUS_DETAILS_KEY).getMessage(), is("Oh, dear! It was " + grpcStatus));
   }
 
   @Test
