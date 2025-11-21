@@ -3,4 +3,6 @@ plugins {
 }
 
 rootProject.name = 'wiremock-grpc-extension'
+include 'wiremock-grpc-extension-core'
+include 'wiremock-grpc-extension-jetty'
 include 'wiremock-grpc-extension-standalone'

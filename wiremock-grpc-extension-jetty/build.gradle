@@ -1,0 +1,130 @@
+buildscript {
+  repositories {
+    maven {
+      url "https://oss.sonatype.org"
+    }
+    mavenCentral()
+  }
+}
+
+plugins {
+  id 'java-library'
+  id 'signing'
+  id 'maven-publish'
+  id 'idea'
+  id 'eclipse'
+  id 'project-report'
+  id 'com.diffplug.spotless' version '7.0.4'
+}
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+group 'org.wiremock'
+
+dependencies {
+  api project(":wiremock-grpc-extension-core")
+  api "org.wiremock:wiremock-common:$versions.wiremock"
+  api "org.wiremock:wiremock-jetty:$versions.wiremock"
+
+  api platform("io.grpc:grpc-bom:$versions.grpc")
+  api "io.grpc:grpc-api"
+  api "com.google.protobuf:protobuf-java:$versions.protobuf"
+  api 'jakarta.servlet:jakarta.servlet-api:6.1.0'
+
+  implementation "io.grpc:grpc-servlet-jakarta"
+
+  implementation platform('org.eclipse.jetty:jetty-bom:12.0.29')
+  implementation 'org.eclipse.jetty.ee10:jetty-ee10-servlet'
+  implementation 'org.eclipse.jetty:jetty-util'
+
+  testImplementation(platform('org.junit:junit-bom:5.13.4'))
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.hamcrest:hamcrest:3.0'
+
+  testRuntimeOnly "io.grpc:grpc-okhttp"
+
+  testImplementation testFixtures(project(":wiremock-grpc-extension-core"))
+  testImplementation project(':wiremock-grpc-extension-core').sourceSets.bookings.output
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  archiveClassifier.set('sources')
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  archiveClassifier.set('javadoc')
+  from javadoc.destinationDir
+}
+
+task testJar(type: Jar, dependsOn: testClasses) {
+  archiveClassifier.set('tests')
+  from sourceSets.test.output
+}
+
+publishing {
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = "https://maven.pkg.github.com/wiremock/wiremock-grpc-extension"
+      credentials {
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
+      }
+    }
+  }
+
+  publications {
+    jetty(MavenPublication) { publication ->
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+      artifact testJar
+
+      pom.packaging 'jar'
+      pom.withXml {
+        asNode().appendNode('description', 'Mock gRPC services with WireMock')
+        asNode().children().last() + pomInfo
+      }
+    }
+  }
+}
+
+signing {
+  // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
+  required {
+    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal"))
+  }
+  def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
+  def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
+  if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
+    println "Using PGP key from env vars"
+    useInMemoryPgpKeys(signingKey, signingPassphrase)
+  } else {
+    println "Using default PGP key"
+  }
+
+  sign publishing.publications
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    exceptionFormat "full"
+  }
+}
+
+assemble.dependsOn clean, jar
+
+publishJettyPublicationToMavenLocal.dependsOn jar
+publishJettyPublicationToGitHubPackagesRepository.dependsOn jar
+
+task localRelease {
+  dependsOn clean, assemble, publishToMavenLocal
+}
