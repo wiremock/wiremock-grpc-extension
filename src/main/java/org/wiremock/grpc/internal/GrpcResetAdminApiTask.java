@@ -26,11 +26,11 @@ import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 
 public interface GrpcResetAdminApiTask extends AdminTask, AdminApiExtension {
 
-  void loadFileDescriptors();
+  void reloadFileDescriptors();
 
   @Override
   default ResponseDefinition execute(Admin admin, ServeEvent serveEvent, PathParams pathParams) {
-    loadFileDescriptors();
+    reloadFileDescriptors();
     return ResponseDefinition.ok();
   }
 

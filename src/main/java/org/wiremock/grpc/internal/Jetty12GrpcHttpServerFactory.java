@@ -29,8 +29,8 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 public class Jetty12GrpcHttpServerFactory implements GrpcHttpServerFactory {
 
   private final JettySettings jettySettings;
+  private final Notifier reloadNotifier = new Notifier();
   private ProtoDescriptorStore protoDescriptorStore;
-  protected GrpcFilter grpcFilter;
 
   public Jetty12GrpcHttpServerFactory() {
     this(null);
@@ -42,12 +42,8 @@ public class Jetty12GrpcHttpServerFactory implements GrpcHttpServerFactory {
   }
 
   @Override
-  public void loadFileDescriptors() {
-    if (protoDescriptorStore == null) {
-      throw new IllegalStateException(
-          "Must call initProtoDescriptorStore before using the server factory");
-    }
-    grpcFilter.loadFileDescriptors(protoDescriptorStore.loadAllFileDescriptors());
+  public void reloadFileDescriptors() {
+    reloadNotifier.notifyListeners();
   }
 
   @Override
@@ -74,9 +70,16 @@ public class Jetty12GrpcHttpServerFactory implements GrpcHttpServerFactory {
       @Override
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
+        if (protoDescriptorStore == null) {
+          throw new IllegalStateException(
+              "Must call initProtoDescriptorStore before using the server factory");
+        }
 
-        grpcFilter = new GrpcFilter(stubRequestHandler);
-        loadFileDescriptors();
+        GrpcFilter grpcFilter = new GrpcFilter(stubRequestHandler);
+        Runnable loadFileDescriptors =
+            () -> grpcFilter.loadFileDescriptors(protoDescriptorStore.loadAllFileDescriptors());
+        reloadNotifier.addListener(loadFileDescriptors);
+        loadFileDescriptors.run();
         final FilterHolder filterHolder = new FilterHolder(grpcFilter);
         mockServiceContext.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
