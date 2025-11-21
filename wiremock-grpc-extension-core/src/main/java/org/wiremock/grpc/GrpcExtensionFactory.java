@@ -23,27 +23,59 @@ import java.util.ServiceLoader;
 import org.wiremock.grpc.internal.BlobProtoDescriptorStore;
 import org.wiremock.grpc.internal.GrpcHttpClientFactory;
 import org.wiremock.grpc.internal.GrpcStubMappingTransformer;
+import org.wiremock.grpc.internal.ProtoDescriptorStore;
 
 public class GrpcExtensionFactory implements ExtensionFactory {
 
   private final GrpcHttpServerFactory serverFactory;
+  private final ProtoDescriptorStore protoDescriptorStore;
 
   public GrpcExtensionFactory() {
-    this(
-        ServiceLoader.load(GrpcHttpServerFactory.class)
-            .findFirst()
-            .orElseThrow(
-                () -> new IllegalStateException("No GrpcHttpServerFactory implementation found")));
+    this(null, null);
   }
 
-  public GrpcExtensionFactory(GrpcHttpServerFactory serverFactory) {
+  public GrpcExtensionFactory(
+      GrpcHttpServerFactory serverFactory, ProtoDescriptorStore protoDescriptorStore) {
     this.serverFactory = serverFactory;
+    this.protoDescriptorStore = protoDescriptorStore;
   }
 
   @Override
   public List<Extension> create(WireMockServices services) {
-    serverFactory.initProtoDescriptorStore(
-        new BlobProtoDescriptorStore(services.getStores().getBlobStore("grpc")));
+    ProtoDescriptorStore descriptorStore = this.protoDescriptorStore;
+    descriptorStore =
+        descriptorStore != null
+            ? descriptorStore
+            : new BlobProtoDescriptorStore(services.getStores().getBlobStore("grpc"));
+    GrpcHttpServerFactory serverFactory = this.serverFactory;
+    serverFactory =
+        serverFactory != null
+            ? serverFactory
+            : ServiceLoader.load(GrpcHttpServerFactory.class)
+                .findFirst()
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException("No GrpcHttpServerFactory implementation found"));
+    serverFactory.initProtoDescriptorStore(descriptorStore);
     return List.of(serverFactory, new GrpcHttpClientFactory(), new GrpcStubMappingTransformer());
+  }
+
+  public static class Builder {
+    private GrpcHttpServerFactory serverFactory;
+    private ProtoDescriptorStore protoDescriptorStore;
+
+    public Builder setServerFactory(GrpcHttpServerFactory serverFactory) {
+      this.serverFactory = serverFactory;
+      return this;
+    }
+
+    public Builder setProtoDescriptorStore(ProtoDescriptorStore protoDescriptorStore) {
+      this.protoDescriptorStore = protoDescriptorStore;
+      return this;
+    }
+
+    public GrpcExtensionFactory build() {
+      return new GrpcExtensionFactory(serverFactory, protoDescriptorStore);
+    }
   }
 }
