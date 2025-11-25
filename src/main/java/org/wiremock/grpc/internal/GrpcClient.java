@@ -17,6 +17,7 @@ package org.wiremock.grpc.internal;
 
 import static com.github.tomakehurst.wiremock.http.Response.response;
 
+import com.github.tomakehurst.wiremock.common.Pair;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.HttpHeaders;
@@ -27,9 +28,13 @@ import com.github.tomakehurst.wiremock.http.client.HttpClient;
 import com.google.protobuf.DynamicMessage;
 import io.grpc.*;
 import io.grpc.stub.ClientCalls;
+import io.grpc.stub.MetadataUtils;
+
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class GrpcClient implements HttpClient {
   private final HttpClient delegateClient;
@@ -54,10 +59,19 @@ public class GrpcClient implements HttpClient {
     GrpcContext context = BaseCallHandler.CONTEXT.get();
     BaseCallHandler.CONTEXT.remove();
 
-    Channel channel =
-        ManagedChannelBuilder.forAddress(request.getHost(), request.getPort())
-            .usePlaintext()
-            .build();
+    ManagedChannelBuilder<?> managedChannelBuilder = ManagedChannelBuilder.forAddress(request.getHost(), request.getPort());
+    if (request.getScheme().equals("https")) {
+      managedChannelBuilder.useTransportSecurity();
+    } else {
+      managedChannelBuilder.usePlaintext();
+    }
+    Metadata metadata = new Metadata();
+    request.getHeaders().all().forEach(header ->
+          metadata.put(Metadata.Key.of(header.key(), Metadata.ASCII_STRING_MARSHALLER), header.firstValue())
+    );
+    ClientInterceptor clientInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
+    ManagedChannel channel = managedChannelBuilder.intercept(clientInterceptor).build();
+
     List<HttpHeader> headers = new ArrayList<>();
     headers.add(new HttpHeader("Content-Type", "application/json"));
     Response.Builder grpcRespBuilder = response();
@@ -96,6 +110,12 @@ public class GrpcClient implements HttpClient {
       }
       headers.add(new HttpHeader(GrpcUtils.GRPC_STATUS_NAME, statusName));
       headers.add(new HttpHeader(GrpcUtils.GRPC_STATUS_REASON, statusReason));
+    } finally {
+        try {
+            channel.shutdown().awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     return grpcRespBuilder.headers(new HttpHeaders(headers.toArray(HttpHeader[]::new))).build();
