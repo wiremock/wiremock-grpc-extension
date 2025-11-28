@@ -14,7 +14,7 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '7.0.4'
+  id 'com.diffplug.spotless' version '8.1.0'
 }
 
 repositories {
