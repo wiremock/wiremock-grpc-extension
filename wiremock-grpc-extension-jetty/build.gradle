@@ -26,7 +26,7 @@ group 'org.wiremock'
 
 dependencies {
   api project(":wiremock-grpc-extension-core")
-  api "org.wiremock:wiremock-common:$versions.wiremock"
+  api "org.wiremock:wiremock-core:$versions.wiremock"
   api "org.wiremock:wiremock-jetty:$versions.wiremock"
 
   api platform("io.grpc:grpc-bom:$versions.grpc")
@@ -36,8 +36,8 @@ dependencies {
 
   implementation "io.grpc:grpc-servlet-jakarta"
 
-  implementation platform('org.eclipse.jetty:jetty-bom:12.0.29')
-  implementation 'org.eclipse.jetty.ee10:jetty-ee10-servlet'
+  implementation platform('org.eclipse.jetty:jetty-bom:12.1.4')
+  implementation 'org.eclipse.jetty.ee11:jetty-ee11-servlet'
   implementation 'org.eclipse.jetty:jetty-util'
 
   testImplementation(platform('org.junit:junit-bom:5.13.4'))

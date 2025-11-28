@@ -15,15 +15,15 @@
  */
 package org.wiremock.grpc.jetty;
 
-import com.github.tomakehurst.wiremock.common.JettySettings;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.http.*;
-import com.github.tomakehurst.wiremock.jetty12.Jetty12HttpServer;
+import com.github.tomakehurst.wiremock.jetty.Jetty12HttpServer;
+import com.github.tomakehurst.wiremock.jetty.JettySettings;
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
 import java.util.Objects;
-import org.eclipse.jetty.ee10.servlet.FilterHolder;
-import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee11.servlet.FilterHolder;
+import org.eclipse.jetty.ee11.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.wiremock.grpc.GrpcHttpServerFactory;
 import org.wiremock.grpc.internal.ProtoDescriptorStore;

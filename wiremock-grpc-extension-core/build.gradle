@@ -51,7 +51,8 @@ spotless {
 }
 
 dependencies {
-  api "org.wiremock:wiremock-common:$versions.wiremock"
+  api "org.wiremock:wiremock-core:$versions.wiremock"
+  implementation "org.wiremock:wiremock-httpclient-apache5:$versions.wiremock"
 
   api platform("io.grpc:grpc-bom:$versions.grpc")
   api "io.grpc:grpc-stub"
@@ -72,6 +73,7 @@ dependencies {
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testImplementation 'org.hamcrest:hamcrest:3.0'
+  testImplementation "org.wiremock:wiremock-junit5:$versions.wiremock"
 
   testImplementation 'com.google.guava:guava:33.5.0-jre'
   testImplementation 'commons-io:commons-io:2.19.0'
