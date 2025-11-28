@@ -18,12 +18,12 @@ package org.wiremock.grpc;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.ResponseDefinition;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.github.tomakehurst.wiremock.matching.ContentPattern;
 import com.github.tomakehurst.wiremock.matching.EqualToJsonPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.recording.SnapshotRecordResult;
@@ -124,12 +124,11 @@ public class GrpcProxyTest {
     RequestPattern grpcReq = grpcMapping.getRequest();
     assertThat(grpcReq.getUrl(), is("/com.example.grpc.GreetingService/greeting"));
     assertThat(grpcReq.getMethod().getName(), is("POST"));
-    for (ContentPattern<?> reqBody : grpcReq.getBodyPatterns()) {
-      if (reqBody instanceof EqualToJsonPattern) {
-        EqualToJsonPattern jsonPattern = (EqualToJsonPattern) reqBody;
-        assertThat(jsonPattern.getEqualToJson(), is("{\n  \"name\": \"Tom\"\n}"));
-      }
-    }
+    assertThat(grpcReq.getBodyPatterns().size(), is(1));
+    assertThat(grpcReq.getBodyPatterns().get(0), instanceOf(EqualToJsonPattern.class));
+    assertThat(
+        ((EqualToJsonPattern) grpcReq.getBodyPatterns().get(0)).getEqualToJson(),
+        is("{\n  \"name\": \"Tom\"\n}"));
 
     ResponseDefinition grpcResp = grpcMapping.getResponse();
     assertThat(grpcResp.getStatus(), is(200));

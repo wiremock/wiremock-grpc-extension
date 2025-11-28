@@ -23,7 +23,6 @@ import com.github.tomakehurst.wiremock.matching.*;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class GrpcStubMappingTransformer extends StubMappingTransformer {
   @Override
@@ -51,8 +50,9 @@ public class GrpcStubMappingTransformer extends StubMappingTransformer {
                   return new EqualToJsonPattern(
                       new String(bytes, StandardCharsets.UTF_8), true, false);
                 })
-            .collect(Collectors.toList());
+            .toList();
 
+    reqBuilder.clearBodyPatterns();
     // Add the converted patterns to the request builder, separate this from the stream to avoid
     // concurrent modification exception
     convertedPatterns.forEach(reqBuilder::withRequestBody);
