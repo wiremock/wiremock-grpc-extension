@@ -97,7 +97,6 @@ assemble.dependsOn clean, shadowJar
 signStandalonePublication.dependsOn shadowJar
 publishStandalonePublicationToMavenLocal.dependsOn signStandalonePublication
 publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandalonePublication
-publishStandalonePublicationToSonatypeRepository.dependsOn signStandalonePublication
 
 
 task localRelease {
