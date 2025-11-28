@@ -215,7 +215,8 @@ int getMajorVersion() {
 }
 
 int getMinorVersion() {
-  Integer.valueOf(project.version.substring(project.version.indexOf('.') + 1, project.version.lastIndexOf('.')))
+  def firstDotIndex = project.version.indexOf('.')
+  Integer.valueOf(project.version.substring(firstDotIndex + 1, project.version.indexOf('.', firstDotIndex + 1)))
 }
 
 int getPatchVersion() {
