@@ -19,7 +19,7 @@ and publish the new release.
 ## Update the version on wiremock.org
 https://github.com/wiremock/wiremock.org
 
-Publish the changes by merging to the `live-publish` branch and manually triggering the "Deploy Jekyll site to Pages" workflow.
+Publish the changes by merging to the `main` branch.
 
 ## Post an announcement on the WireMock Community Slack
 Announce in the #announcments channel then link to the message from #general.
