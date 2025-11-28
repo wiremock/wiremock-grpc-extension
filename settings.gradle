@@ -1,5 +1,8 @@
-rootProject.name = 'wiremock-grpc-extension'
-include 'wiremock-grpc-extension-standalone'
-if (JavaVersion.current() >= JavaVersion.VERSION_17) {
-  include 'wiremock-grpc-extension-jetty12'
+plugins {
+  id 'com.autonomousapps.build-health' version '3.5.0'
 }
+
+rootProject.name = 'wiremock-grpc-extension'
+include 'wiremock-grpc-extension-core'
+include 'wiremock-grpc-extension-jetty'
+include 'wiremock-grpc-extension-standalone'

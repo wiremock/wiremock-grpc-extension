@@ -9,7 +9,6 @@ buildscript {
 
 plugins {
   id 'java-library'
-  id 'java-test-fixtures'
   id 'signing'
   id 'maven-publish'
   id 'idea'
@@ -28,14 +27,14 @@ repositories {
 group 'org.wiremock'
 
 allprojects {
-  version = "0.11.0"
+  version = "1.0.0-beta.1"
 
-  sourceCompatibility = 11
-  targetCompatibility = 11
+  sourceCompatibility = 17
+  targetCompatibility = 17
 
   ext {
     versions = [
-      wiremock: "3.13.2",
+      wiremock: "4.0.0-beta.19",
       protobuf: "3.25.8",
       grpc    : "1.77.0"
     ]
@@ -69,15 +68,6 @@ allprojects {
 }
 
 spotless {
-  java {
-    target 'src/**/*.java'
-    googleJavaFormat('1.17.0')
-    licenseHeaderFile "${rootDir}/gradle/spotless.java.license.txt"
-    ratchetFrom 'origin/main'
-    trimTrailingWhitespace()
-    endWithNewline()
-    targetExclude '**/Tmp*.java'
-  }
   groovyGradle {
     target '**/*.gradle'
     greclipse()
@@ -85,46 +75,11 @@ spotless {
     trimTrailingWhitespace()
     endWithNewline()
   }
-  json {
-    target 'src/**/*.json'
-    targetExclude '**/tmp*.json', 'src/test/resources/sample.json', 'src/main/resources/swagger/*.json', 'src/test/resources/filesource/subdir/deepfile.json', 'src/test/resources/schema-validation/*.json'
-    simple().indentWithSpaces(2)
-  }
 }
 
 dependencies {
-  api "org.wiremock:wiremock:$versions.wiremock"
-
-  api platform("io.grpc:grpc-bom:$versions.grpc")
-  api "io.grpc:grpc-protobuf"
-  api "io.grpc:grpc-services"
-  api "io.grpc:grpc-stub"
-  api "io.grpc:grpc-netty"
-
-  implementation "io.grpc:grpc-servlet-jakarta"
-  implementation "com.google.protobuf:protobuf-java-util:$versions.protobuf"
-
-  implementation 'javax.annotation:javax.annotation-api:1.3.2'
-
-  testFixturesApi(platform('org.junit:junit-bom:5.13.4'))
-  testFixturesApi "org.junit.jupiter:junit-jupiter"
-  testFixturesApi "org.junit.platform:junit-platform-launcher"
-  testFixturesApi "org.hamcrest:hamcrest-core:3.0"
-  testFixturesApi "org.hamcrest:hamcrest-library:3.0"
-  testFixturesApi 'org.awaitility:awaitility:4.3.0'
-
-  testFixturesApi "io.grpc:grpc-okhttp"
-
-  testFixturesApi 'javax.annotation:javax.annotation-api:1.3.2'
-
-  testImplementation(testFixtures(project(":")), {
-    exclude group: 'org.eclipse.jetty'
-    exclude group: 'org.eclipse.jetty.http2'
-  })
-
-  constraints {
-    implementation "io.netty:netty-codec-http2:4.2.0.RC3"
-  }
+  api(project(":wiremock-grpc-extension-core"))
+  api(project(":wiremock-grpc-extension-jetty"))
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -211,53 +166,6 @@ task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
 }
 
-sourceSets {
-  bookings
-  test {
-    compileClasspath += bookings.output
-    runtimeClasspath += bookings.output
-  }
-}
-
-configurations {
-  bookingsImplementation.extendsFrom testImplementation
-}
-
-protobuf {
-  protoc {
-    artifact = "com.google.protobuf:protoc:$versions.protobuf"
-  }
-
-  plugins {
-    grpc {
-      artifact = "io.grpc:protoc-gen-grpc-java:$versions.grpc"
-    }
-  }
-  generateProtoTasks {
-    all()*.plugins {
-      grpc {
-        outputSubDir = 'java'
-      }
-    }
-
-    all().each { task ->
-      task.generateDescriptorSet = true
-      task.descriptorSetOptions.includeImports = true
-    }
-    ofSourceSet('testFixtures').each { task ->
-      task.descriptorSetOptions.path = "$projectDir/src/testFixtures/resources/wiremock/grpc/greetings.dsc"
-    }
-    ofSourceSet('bookings').each { task ->
-      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
-    }
-  }
-}
-
-processTestResources.dependsOn generateProto
-processTestResources.dependsOn generateTestProto
-processTestResources.dependsOn generateBookingsProto
-processTestFixturesResources.dependsOn generateTestFixturesProto
-
 nexusPublishing {
   // See https://github.com/wiremock/community/blob/main/infra/maven-central.md
   repositories {
@@ -312,4 +220,29 @@ int getMinorVersion() {
 
 int getPatchVersion() {
   Integer.valueOf(project.version.substring(project.version.lastIndexOf('.') + 1))
+}
+
+tasks.check {
+  dependsOn(buildHealth)
+}
+
+dependencyAnalysis {
+  issues {
+    all {
+      onAny {
+        severity("fail")
+      }
+    }
+    project(project.path) {
+      onAny {
+        exclude(":wiremock-grpc-extension-core")
+        exclude(":wiremock-grpc-extension-jetty")
+      }
+    }
+  }
+  usage {
+    analysis {
+      checkSuperClasses(true)
+    }
+  }
 }

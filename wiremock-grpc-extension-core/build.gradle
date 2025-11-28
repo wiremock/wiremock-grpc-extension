@@ -1,0 +1,216 @@
+buildscript {
+  repositories {
+    maven {
+      url "https://oss.sonatype.org"
+    }
+    mavenCentral()
+  }
+}
+
+plugins {
+  id 'java-library'
+  id 'java-test-fixtures'
+  id 'signing'
+  id 'maven-publish'
+  id 'idea'
+  id 'eclipse'
+  id 'project-report'
+  id 'com.diffplug.spotless' version '7.0.4'
+  id "com.google.protobuf" version "0.9.5"
+}
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+group 'org.wiremock'
+
+spotless {
+  java {
+    target 'src/**/*.java'
+    googleJavaFormat('1.17.0')
+    licenseHeaderFile "${rootDir}/gradle/spotless.java.license.txt"
+    ratchetFrom 'origin/main'
+    trimTrailingWhitespace()
+    endWithNewline()
+    targetExclude '**/Tmp*.java'
+  }
+  groovyGradle {
+    target '**/*.gradle'
+    greclipse()
+    indentWithSpaces(2)
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+  json {
+    target 'src/**/*.json'
+    targetExclude '**/tmp*.json'
+    simple().indentWithSpaces(2)
+  }
+}
+
+dependencies {
+  api "org.wiremock:wiremock-core:$versions.wiremock"
+  implementation "org.wiremock:wiremock-httpclient-apache5:$versions.wiremock"
+
+  api platform("io.grpc:grpc-bom:$versions.grpc")
+  api "io.grpc:grpc-stub"
+  api "io.grpc:grpc-api"
+  api "com.google.protobuf:protobuf-java:$versions.protobuf"
+
+  implementation "io.grpc:grpc-protobuf"
+  implementation "io.grpc:grpc-services"
+  implementation "com.google.protobuf:protobuf-java-util:$versions.protobuf"
+
+  compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+  implementation platform('com.fasterxml.jackson:jackson-bom:2.20.1')
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+  testImplementation(platform('org.junit:junit-bom:5.13.4'))
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testImplementation 'org.junit.jupiter:junit-jupiter-params'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.hamcrest:hamcrest:3.0'
+  testImplementation "org.wiremock:wiremock-junit5:$versions.wiremock"
+
+  testImplementation 'com.google.guava:guava:33.5.0-jre'
+  testImplementation 'commons-io:commons-io:2.19.0'
+  testRuntimeOnly "io.grpc:grpc-okhttp"
+  testRuntimeOnly project(':wiremock-grpc-extension-jetty')
+
+  testFixturesImplementation "io.grpc:grpc-protobuf"
+  testFixturesApi "io.grpc:grpc-stub"
+  testFixturesApi "io.grpc:grpc-api"
+
+  testFixturesApi 'com.google.guava:guava:33.5.0-jre'
+  testFixturesApi "com.google.protobuf:protobuf-java:$versions.protobuf"
+  testFixturesCompileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+
+  testImplementation(testFixtures(project(":wiremock-grpc-extension-core")))
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  archiveClassifier.set('sources')
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  archiveClassifier.set('javadoc')
+  from javadoc.destinationDir
+}
+
+task testJar(type: Jar, dependsOn: testClasses) {
+  archiveClassifier.set('tests')
+  from sourceSets.test.output
+}
+
+publishing {
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = "https://maven.pkg.github.com/wiremock/wiremock-grpc-extension"
+      credentials {
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
+      }
+    }
+  }
+
+  publications {
+    core(MavenPublication) { publication ->
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+      artifact testJar
+
+      pom.packaging 'jar'
+      pom.withXml {
+        asNode().appendNode('description', 'Mock gRPC services with WireMock')
+        asNode().children().last() + pomInfo
+      }
+    }
+  }
+}
+
+signing {
+  // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
+  required {
+    !version.toString().contains("SNAPSHOT") && (gradle.taskGraph.hasTask("uploadArchives") || gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal"))
+  }
+  def signingKey = providers.environmentVariable("OSSRH_GPG_SECRET_KEY").orElse("").get()
+  def signingPassphrase = providers.environmentVariable("OSSRH_GPG_SECRET_KEY_PASSWORD").orElse("").get()
+  if (!signingKey.isEmpty() && !signingPassphrase.isEmpty()) {
+    println "Using PGP key from env vars"
+    useInMemoryPgpKeys(signingKey, signingPassphrase)
+  } else {
+    println "Using default PGP key"
+  }
+
+  sign publishing.publications
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    exceptionFormat "full"
+  }
+}
+
+assemble.dependsOn clean, jar
+
+publishCorePublicationToMavenLocal.dependsOn jar
+publishCorePublicationToGitHubPackagesRepository.dependsOn jar
+
+task localRelease {
+  dependsOn clean, assemble, publishToMavenLocal
+}
+
+sourceSets {
+  bookings
+  test {
+    compileClasspath += bookings.output
+    runtimeClasspath += bookings.output
+  }
+}
+
+configurations {
+  bookingsImplementation.extendsFrom testImplementation
+}
+
+protobuf {
+  protoc {
+    artifact = "com.google.protobuf:protoc:$versions.protobuf"
+  }
+
+  plugins {
+    grpc {
+      artifact = "io.grpc:protoc-gen-grpc-java:$versions.grpc"
+    }
+  }
+  generateProtoTasks {
+    all()*.plugins {
+      grpc {
+        outputSubDir = 'java'
+      }
+    }
+
+    all().each { task ->
+      task.generateDescriptorSet = true
+      task.descriptorSetOptions.includeImports = true
+    }
+    ofSourceSet('testFixtures').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/testFixtures/resources/wiremock/grpc/greetings.dsc"
+    }
+    ofSourceSet('bookings').each { task ->
+      task.descriptorSetOptions.path = "$projectDir/src/test/resources/wiremock/grpc/bookings.dsc"
+    }
+  }
+}
+
+processTestResources.dependsOn generateProto
+processTestResources.dependsOn generateTestProto
+processTestResources.dependsOn generateBookingsProto
+processTestFixturesResources.dependsOn generateTestFixturesProto
