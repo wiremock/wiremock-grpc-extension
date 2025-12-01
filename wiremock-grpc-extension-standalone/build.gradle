@@ -17,6 +17,7 @@ plugins {
   id 'com.diffplug.spotless' version '8.1.0'
   id 'com.github.johnrengelman.shadow' version '8.1.1'
   id "com.google.protobuf" version "0.9.5"
+  id 'com.vanniktech.maven.publish.base' version '0.35.0'
 }
 
 repositories {
@@ -101,6 +102,10 @@ publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandaloneP
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
+}
+
+mavenPublishing {
+  publishToMavenCentral()
 }
 
 tasks.findAll { it.name == 'jar' }.each { it.enabled = false }

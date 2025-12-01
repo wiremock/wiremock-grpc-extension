@@ -15,6 +15,7 @@ plugins {
   id 'eclipse'
   id 'project-report'
   id 'com.diffplug.spotless' version '8.1.0'
+  id 'com.vanniktech.maven.publish.base' version '0.35.0'
 }
 
 repositories {
@@ -127,4 +128,8 @@ publishJettyPublicationToGitHubPackagesRepository.dependsOn jar
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
+}
+
+mavenPublishing {
+  publishToMavenCentral()
 }
