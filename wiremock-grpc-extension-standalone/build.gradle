@@ -76,6 +76,10 @@ publishing {
   }
 }
 
+mavenPublishing {
+  publishToMavenCentral()
+}
+
 signing {
   // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
   required {
@@ -98,14 +102,10 @@ assemble.dependsOn clean, shadowJar
 signStandalonePublication.dependsOn shadowJar
 publishStandalonePublicationToMavenLocal.dependsOn signStandalonePublication
 publishStandalonePublicationToGitHubPackagesRepository.dependsOn signStandalonePublication
-
+publishStandalonePublicationToMavenCentralRepository.dependsOn signStandalonePublication
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
-}
-
-mavenPublishing {
-  publishToMavenCentral()
 }
 
 tasks.findAll { it.name == 'jar' }.each { it.enabled = false }

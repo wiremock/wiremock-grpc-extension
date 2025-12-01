@@ -96,6 +96,10 @@ publishing {
   }
 }
 
+mavenPublishing {
+  publishToMavenCentral()
+}
+
 signing {
   // Docs: https://github.com/wiremock/community/blob/main/infra/maven-central.md
   required {
@@ -125,11 +129,8 @@ assemble.dependsOn clean, jar
 
 publishJettyPublicationToMavenLocal.dependsOn jar
 publishJettyPublicationToGitHubPackagesRepository.dependsOn jar
+publishJettyPublicationToMavenCentralRepository.dependsOn jar
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
-}
-
-mavenPublishing {
-  publishToMavenCentral()
 }

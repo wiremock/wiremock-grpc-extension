@@ -142,6 +142,10 @@ publishing {
   }
 }
 
+mavenPublishing {
+  publishToMavenCentral()
+}
+
 test {
   useJUnitPlatform()
   testLogging {
@@ -154,6 +158,7 @@ assemble.dependsOn clean, jar
 
 publishMainPublicationToMavenLocal.dependsOn jar
 publishMainPublicationToGitHubPackagesRepository.dependsOn jar
+publishMainPublicationToMavenCentralRepository.dependsOn jar
 
 task addGitTag {
   doLast {
@@ -164,10 +169,6 @@ task addGitTag {
 
 task localRelease {
   dependsOn clean, assemble, publishToMavenLocal
-}
-
-mavenPublishing {
-  publishToMavenCentral()
 }
 
 task 'set-snapshot-version' {
