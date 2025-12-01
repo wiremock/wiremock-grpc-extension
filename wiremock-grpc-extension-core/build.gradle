@@ -77,7 +77,7 @@ dependencies {
   testImplementation "org.wiremock:wiremock-junit5:$versions.wiremock"
 
   testImplementation 'com.google.guava:guava:33.5.0-jre'
-  testImplementation 'commons-io:commons-io:2.19.0'
+  testImplementation 'commons-io:commons-io:2.21.0'
   testRuntimeOnly "io.grpc:grpc-okhttp"
   testRuntimeOnly project(':wiremock-grpc-extension-jetty')
 
