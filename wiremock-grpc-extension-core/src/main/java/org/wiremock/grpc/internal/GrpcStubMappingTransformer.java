@@ -34,7 +34,7 @@ public class GrpcStubMappingTransformer extends StubMappingTransformer {
       // we cannot use request content type is because it is not set in the request pattern
       RequestPattern req = stubMapping.getRequest();
       RequestPattern jsonReq = convertBinaryToJson(req);
-      stubMapping.setRequest(jsonReq);
+      stubMapping.transform(builder -> builder.setRequest(jsonReq));
     }
     return stubMapping;
   }
