@@ -38,7 +38,7 @@ dependencies {
   implementation "io.grpc:grpc-servlet-jakarta"
 
   implementation platform('org.eclipse.jetty:jetty-bom:12.1.4')
-  implementation platform('org.eclipse.jetty.ee11:jetty-ee11-bom:12.1.4')
+  implementation platform('org.eclipse.jetty.ee11:jetty-ee11-bom:12.1.5')
   implementation 'org.eclipse.jetty.ee11:jetty-ee11-servlet'
   implementation 'org.eclipse.jetty:jetty-util'
 
