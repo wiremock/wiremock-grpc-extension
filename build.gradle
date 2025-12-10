@@ -27,14 +27,14 @@ repositories {
 group 'org.wiremock'
 
 allprojects {
-  version = "1.0.0-beta.2"
+  version = "1.0.0-beta.3"
 
   sourceCompatibility = 17
   targetCompatibility = 17
 
   ext {
     versions = [
-      wiremock: "4.0.0-beta.20",
+      wiremock: "4.0.0-beta.22",
       protobuf: "4.33.1",
       grpc    : "1.77.0"
     ]
