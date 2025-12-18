@@ -23,40 +23,38 @@ import com.github.tomakehurst.wiremock.matching.*;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GrpcStubMappingTransformer extends StubMappingTransformer {
   @Override
   public StubMapping transform(StubMapping stubMapping, FileSource files, Parameters parameters) {
     ResponseDefinition resp = stubMapping.getResponse();
-    if (resp.getHeaders() != null
-        && resp.getHeaders().getHeader(GrpcUtils.GRPC_STATUS_NAME) != null) {
+    if (resp.getHeaders().getHeader(GrpcUtils.GRPC_STATUS_NAME) != null) {
       // when response is grpc, we need to convert the request body to json as well, the reason that
       // we cannot use request content type is because it is not set in the request pattern
       RequestPattern req = stubMapping.getRequest();
       RequestPattern jsonReq = convertBinaryToJson(req);
-      stubMapping.transform(builder -> builder.setRequest(jsonReq));
+      return stubMapping.transform(builder -> builder.setRequest(jsonReq));
     }
     return stubMapping;
   }
 
-  private RequestPattern convertBinaryToJson(RequestPattern req) {
-    RequestPatternBuilder reqBuilder = RequestPatternBuilder.like(req).but();
-    List<EqualToJsonPattern> convertedPatterns =
-        req.getBodyPatterns().stream()
-            .filter(body -> body instanceof BinaryEqualToPattern)
-            .map(
-                binaryBody -> {
-                  byte[] bytes = ((BinaryEqualToPattern) binaryBody).getValue();
-                  return new EqualToJsonPattern(
-                      new String(bytes, StandardCharsets.UTF_8), true, false);
-                })
-            .toList();
+  private RequestPattern convertBinaryToJson(RequestPattern requestPattern) {
+    return requestPattern.transform(
+        reqBuilder -> {
+          List<ContentPattern<?>> convertedPatterns =
+              reqBuilder.getBodyPatterns().stream()
+                  .filter(body -> body instanceof BinaryEqualToPattern)
+                  .map(
+                      binaryBody -> {
+                        byte[] bytes = ((BinaryEqualToPattern) binaryBody).getValue();
+                        return new EqualToJsonPattern(
+                            new String(bytes, StandardCharsets.UTF_8), true, false);
+                      })
+                  .collect(Collectors.toList());
 
-    reqBuilder.clearBodyPatterns();
-    // Add the converted patterns to the request builder, separate this from the stream to avoid
-    // concurrent modification exception
-    convertedPatterns.forEach(reqBuilder::withRequestBody);
-    return reqBuilder.build();
+          reqBuilder.setBodyPatterns(convertedPatterns);
+        });
   }
 
   @Override
