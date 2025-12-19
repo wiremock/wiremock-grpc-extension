@@ -27,7 +27,7 @@ repositories {
 group 'org.wiremock'
 
 allprojects {
-  version = "1.0.0-beta.3"
+  version = "1.0.0-beta.4"
 
   sourceCompatibility = 17
   targetCompatibility = 17
