@@ -67,7 +67,7 @@ public class Jetty12GrpcHttpServerFactoryTest {
       var exception =
           assertThrowsExactly(
               IllegalArgumentException.class,
-              () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
+              () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null, null));
       assertEquals("Invalid response headers size 0", exception.getMessage());
     }
     {
@@ -76,7 +76,7 @@ public class Jetty12GrpcHttpServerFactoryTest {
           new Jetty12GrpcHttpServerFactory(jettySettings);
       grpcHttpServerFactory.initProtoDescriptorStore(List::of);
       assertDoesNotThrow(
-          () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
+          () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null, null));
     }
   }
 
@@ -86,13 +86,13 @@ public class Jetty12GrpcHttpServerFactoryTest {
     var exception =
         assertThrowsExactly(
             IllegalStateException.class,
-            () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
+            () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null, null));
     assertEquals(
         "Must call initProtoDescriptorStore before using the server factory",
         exception.getMessage());
     grpcHttpServerFactory.initProtoDescriptorStore(List::of);
     assertDoesNotThrow(
-        () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null));
+        () -> grpcHttpServerFactory.buildHttpServer(new WireMockConfiguration(), null, null, null));
   }
 
   @Test
