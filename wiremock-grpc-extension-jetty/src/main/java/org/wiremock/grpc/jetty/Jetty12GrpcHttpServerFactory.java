@@ -19,6 +19,7 @@ import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.http.*;
 import com.github.tomakehurst.wiremock.jetty.Jetty12HttpServer;
 import com.github.tomakehurst.wiremock.jetty.JettySettings;
+import com.github.tomakehurst.wiremock.message.MessageStubRequestHandler;
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -62,13 +63,15 @@ public class Jetty12GrpcHttpServerFactory implements GrpcHttpServerFactory {
   public HttpServer buildHttpServer(
       Options options,
       AdminRequestHandler adminRequestHandler,
-      StubRequestHandler stubRequestHandler) {
+      StubRequestHandler stubRequestHandler,
+      MessageStubRequestHandler messageStubRequestHandler) {
     return new Jetty12HttpServer(
         options,
         adminRequestHandler,
         stubRequestHandler,
         jettySettings,
-        new QueuedThreadPool(options.containerThreads())) {
+        new QueuedThreadPool(options.containerThreads()),
+        messageStubRequestHandler) {
       @Override
       protected void decorateMockServiceContextBeforeConfig(
           ServletContextHandler mockServiceContext) {
