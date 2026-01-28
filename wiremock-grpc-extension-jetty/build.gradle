@@ -14,7 +14,7 @@ plugins {
   id 'idea'
   id 'eclipse'
   id 'project-report'
-  id 'com.diffplug.spotless' version '8.2.0'
+  id 'com.diffplug.spotless' version '8.2.1'
   id 'com.vanniktech.maven.publish.base' version '0.36.0'
 }
 
