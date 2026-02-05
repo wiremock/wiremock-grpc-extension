@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Thomas Akehurst
+ * Copyright (C) 2025-2026 Thomas Akehurst
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,19 @@ package org.wiremock.grpc.internal;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.http.client.HttpClient;
 import com.github.tomakehurst.wiremock.http.client.HttpClientFactory;
+import com.github.tomakehurst.wiremock.http.client.apache5.ApacheHttpClientFactory;
 import java.util.List;
 
 public class GrpcHttpClientFactory implements HttpClientFactory {
+  private final HttpClientFactory delegateFactory;
+
+  public GrpcHttpClientFactory() {
+    this(new ApacheHttpClientFactory());
+  }
+
+  public GrpcHttpClientFactory(HttpClientFactory delegateFactory) {
+    this.delegateFactory = delegateFactory;
+  }
 
   @Override
   public String getName() {
@@ -33,6 +43,8 @@ public class GrpcHttpClientFactory implements HttpClientFactory {
       boolean trustAllCertificates,
       List<String> trustedHosts,
       boolean useSystemProperties) {
-    return new GrpcClient(options, trustAllCertificates, trustedHosts, useSystemProperties);
+    return new GrpcClient(
+        delegateFactory.buildHttpClient(
+            options, trustAllCertificates, trustedHosts, useSystemProperties));
   }
 }
