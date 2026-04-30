@@ -34,7 +34,7 @@ allprojects {
 
   ext {
     versions = [
-      wiremock: "4.0.0-beta.32",
+      wiremock: "4.0.0-beta.33",
       protobuf: "4.34.0",
       grpc    : "1.80.0"
     ]
